@@ -1,182 +1,858 @@
 import discord
 from discord.ext import commands
+from datetime import datetime
 
 
 class Moderation(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.warnings = {}
 
-    # -------------------------
+
+    # ==================================
+    # CONFIGURAÇÃO AUTOMÁTICA DO SERVIDOR
+    # ==================================
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+
+        for guild in self.bot.guilds:
+
+            # Criar cargo Muted
+
+            muted = discord.utils.get(
+                guild.roles,
+                name="🔇 Muted"
+            )
+
+            if muted is None:
+
+                muted = await guild.create_role(
+                    name="🔇 Muted",
+                    reason="Sistema de moderação"
+                )
+
+                for channel in guild.channels:
+
+                    try:
+
+                        await channel.set_permissions(
+                            muted,
+                            send_messages=False,
+                            speak=False,
+                            add_reactions=False
+                        )
+
+                    except:
+                        pass
+
+
+            # Criar cargo Staff
+
+            staff = discord.utils.get(
+                guild.roles,
+                name="🛡️ Staff"
+            )
+
+            if staff is None:
+
+                await guild.create_role(
+                    name="🛡️ Staff",
+                    reason="Sistema de moderação"
+                )
+
+
+            # Criar canal de logs
+
+            logs = discord.utils.get(
+                guild.text_channels,
+                name="📋・logs-moderação"
+            )
+
+
+            if logs is None:
+
+                await guild.create_text_channel(
+                    "📋・logs-moderação",
+                    reason="Sistema de logs"
+                )
+
+
+
+    # ==================================
+    # EMBEDS PADRÃO
+    # ==================================
+
+    def embed(
+        self,
+        title,
+        description,
+        color=discord.Color.red()
+    ):
+
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color,
+            timestamp=datetime.utcnow()
+        )
+
+
+        embed.set_footer(
+            text="🛡️ Sistema de Moderação"
+        )
+
+
+        return embed
+
+
+
+    # ==================================
+    # SISTEMA DE LOGS
+    # ==================================
+
+    async def enviar_log(
+        self,
+        guild,
+        embed
+    ):
+
+        canal = discord.utils.get(
+            guild.text_channels,
+            name="📋・logs-moderação"
+        )
+
+
+        if canal:
+
+            await canal.send(
+                embed=embed
+            )
+
+
+
+    # ==================================
     # BAN
-    # -------------------------
+    # ==================================
+
     @commands.command()
     @commands.has_permissions(ban_members=True)
-    async def ban(self, ctx, member: discord.Member = None, *, reason="Sem motivo informado"):
+    async def ban(
+        self,
+        ctx,
+        member: discord.Member = None,
+        *,
+        reason="Não informado"
+    ):
+
 
         if member is None:
-            embed = discord.Embed(
-                title="❌ Erro",
-                description="Você precisa marcar um usuário para banir.",
-                color=discord.Color.red()
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa marcar um usuário para banir."
+                )
             )
-            return await ctx.send(embed=embed)
+
 
         if member == ctx.author:
+
             return await ctx.send(
-                embed=discord.Embed(
-                    title="❌ Erro",
-                    description="Você não pode se banir.",
-                    color=discord.Color.red()
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você não pode se banir."
                 )
             )
 
-        await member.ban(reason=reason)
 
-        embed = discord.Embed(
-            title="🔨 Usuário Banido",
-            description=(
-                f"**Usuário:** {member.mention}\n"
-                f"**Moderador:** {ctx.author.mention}\n"
-                f"**Motivo:** {reason}"
-            ),
-            color=discord.Color.dark_red()
+        if member.top_role >= ctx.author.top_role:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você não pode punir alguém com cargo igual ou superior."
+                )
+            )
+
+
+        await member.ban(
+            reason=reason
         )
 
-        embed.set_footer(text="Sistema de Moderação")
 
-        await ctx.send(embed=embed)
+        embed = self.embed(
+            "🔨 Usuário Banido",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+🛡️ **Moderador:**
+{ctx.author.mention}
+
+📝 **Motivo:**
+{reason}
+
+🆔 **ID:**
+{member.id}
+""",
+            discord.Color.dark_red()
+        )
 
 
-    # -------------------------
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
     # KICK
-    # -------------------------
+    # ==================================
+
     @commands.command()
     @commands.has_permissions(kick_members=True)
-    async def kick(self, ctx, member: discord.Member = None, *, reason="Sem motivo informado"):
+    async def kick(
+        self,
+        ctx,
+        member: discord.Member = None,
+        *,
+        reason="Não informado"
+    ):
+
 
         if member is None:
+
             return await ctx.send(
-                embed=discord.Embed(
-                    title="❌ Erro",
-                    description="Você precisa marcar um usuário para expulsar.",
-                    color=discord.Color.red()
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa marcar um usuário para expulsar."
                 )
             )
 
-        await member.kick(reason=reason)
 
-        embed = discord.Embed(
-            title="👢 Usuário Expulso",
-            description=(
-                f"**Usuário:** {member.mention}\n"
-                f"**Moderador:** {ctx.author.mention}\n"
-                f"**Motivo:** {reason}"
-            ),
-            color=discord.Color.orange()
+        if member.top_role >= ctx.author.top_role:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você não pode expulsar esse usuário."
+                )
+            )
+
+
+        await member.kick(
+            reason=reason
         )
 
-        await ctx.send(embed=embed)
 
+        embed = self.embed(
+            "👢 Usuário Expulso",
+            f"""
+👤 **Usuário:**
+{member.mention}
 
-    # -------------------------
-    # CLEAR
-    # -------------------------
-    @commands.command()
-    @commands.has_permissions(manage_messages=True)
-    async def clear(self, ctx, quantidade: int = 5):
+🛡️ **Moderador:**
+{ctx.author.mention}
 
-        await ctx.channel.purge(limit=quantidade + 1)
-
-        embed = discord.Embed(
-            title="🧹 Mensagens Apagadas",
-            description=f"Foram apagadas **{quantidade} mensagens**.",
-            color=discord.Color.blue()
+📝 **Motivo:**
+{reason}
+""",
+            discord.Color.orange()
         )
 
-        msg = await ctx.send(embed=embed)
 
-        await msg.delete(delay=5)
+        await ctx.send(
+            embed=embed
+        )
 
 
-    # -------------------------
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
     # MUTE
-    # -------------------------
+    # ==================================
+
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def mute(self, ctx, member: discord.Member = None):
+    async def mute(
+        self,
+        ctx,
+        member: discord.Member = None,
+        *,
+        reason="Não informado"
+    ):
+
 
         if member is None:
+
             return await ctx.send(
-                embed=discord.Embed(
-                    title="❌ Erro",
-                    description="Você precisa marcar um usuário para mutar.",
-                    color=discord.Color.red()
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa marcar um usuário para mutar."
                 )
             )
+
 
         role = discord.utils.get(
             ctx.guild.roles,
-            name="Muted"
+            name="🔇 Muted"
         )
+
 
         if role is None:
 
-            role = await ctx.guild.create_role(
-                name="Muted",
-                reason="Sistema automático de mute"
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "O cargo 🔇 Muted não existe."
+                )
             )
 
-            for channel in ctx.guild.channels:
-                await channel.set_permissions(
-                    role,
-                    send_messages=False,
-                    speak=False
-                )
 
-        await member.add_roles(role)
-
-        embed = discord.Embed(
-            title="🔇 Usuário Mutado",
-            description=f"{member.mention} foi mutado.",
-            color=discord.Color.yellow()
+        await member.add_roles(
+            role,
+            reason=reason
         )
 
-        await ctx.send(embed=embed)
+
+        embed = self.embed(
+            "🔇 Usuário Mutado",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+🛡️ **Moderador:**
+{ctx.author.mention}
+
+📝 **Motivo:**
+{reason}
+""",
+            discord.Color.gold()
+        )
 
 
-    # -------------------------
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
     # UNMUTE
-    # -------------------------
+    # ==================================
+
     @commands.command()
     @commands.has_permissions(manage_roles=True)
-    async def unmute(self, ctx, member: discord.Member = None):
+    async def unmute(
+        self,
+        ctx,
+        member: discord.Member = None
+    ):
+
 
         if member is None:
+
             return await ctx.send(
-                embed=discord.Embed(
-                    title="❌ Erro",
-                    description="Você precisa marcar um usuário.",
-                    color=discord.Color.red()
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa marcar um usuário."
                 )
             )
+
 
         role = discord.utils.get(
             ctx.guild.roles,
-            name="Muted"
+            name="🔇 Muted"
         )
+
 
         if role in member.roles:
-            await member.remove_roles(role)
 
-        embed = discord.Embed(
-            title="🔊 Usuário Desmutado",
-            description=f"{member.mention} foi desmutado.",
-            color=discord.Color.green()
+            await member.remove_roles(
+                role
+            )
+
+
+        embed = self.embed(
+            "🔊 Usuário Desmutado",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+🛡️ **Moderador:**
+{ctx.author.mention}
+""",
+            discord.Color.green()
         )
 
-        await ctx.send(embed=embed)
 
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # WARN
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(manage_messages=True)
+    async def warn(
+        self,
+        ctx,
+        member: discord.Member = None,
+        *,
+        reason="Não informado"
+    ):
+
+
+        if member is None:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa marcar um usuário."
+                )
+            )
+
+
+        if member.id not in self.warnings:
+
+            self.warnings[member.id] = []
+
+
+        self.warnings[member.id].append(
+            {
+                "motivo": reason,
+                "moderador": ctx.author.name
+            }
+        )
+
+
+        embed = self.embed(
+            "⚠️ Advertência Aplicada",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+🛡️ **Moderador:**
+{ctx.author.mention}
+
+📝 **Motivo:**
+{reason}
+
+📌 **Total de warns:**
+{len(self.warnings[member.id])}
+""",
+            discord.Color.orange()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # VER WARNS
+    # ==================================
+
+    @commands.command(name="warns")
+    async def warns(
+        self,
+        ctx,
+        member: discord.Member = None
+    ):
+
+
+        member = member or ctx.author
+
+
+        lista = self.warnings.get(
+            member.id,
+            []
+        )
+
+
+        if not lista:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "✅ Sem Warns",
+                    f"{member.mention} não possui advertências.",
+                    discord.Color.green()
+                )
+            )
+
+
+        texto = ""
+
+
+        for numero, warn in enumerate(lista, start=1):
+
+            texto += (
+                f"**{numero}.** {warn['motivo']}\n"
+            )
+
+
+        embed = self.embed(
+            "⚠️ Histórico de Warns",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+
+{texto}
+""",
+            discord.Color.orange()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+
+    # ==================================
+    # LIMPAR CHAT
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(manage_messages=True)
+    async def clear(
+        self,
+        ctx,
+        quantidade:int = 5
+    ):
+
+
+        await ctx.channel.purge(
+            limit=quantidade + 1
+        )
+
+
+        embed = self.embed(
+            "🧹 Chat Limpo",
+            f"Foram apagadas **{quantidade} mensagens**.",
+            discord.Color.blue()
+        )
+
+
+        mensagem = await ctx.send(
+            embed=embed
+        )
+
+
+        await mensagem.delete(
+            delay=5
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # LOCK - BLOQUEAR CANAL
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(manage_channels=True)
+    async def lock(
+        self,
+        ctx
+    ):
+
+
+        await ctx.channel.set_permissions(
+            ctx.guild.default_role,
+            send_messages=False
+        )
+
+
+        embed = self.embed(
+            "🔒 Canal Bloqueado",
+            f"""
+📌 **Canal:**
+{ctx.channel.mention}
+
+🛡️ **Responsável:**
+{ctx.author.mention}
+
+O canal foi bloqueado.
+""",
+            discord.Color.red()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # UNLOCK - DESBLOQUEAR CANAL
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(manage_channels=True)
+    async def unlock(
+        self,
+        ctx
+    ):
+
+
+        await ctx.channel.set_permissions(
+            ctx.guild.default_role,
+            send_messages=True
+        )
+
+
+        embed = self.embed(
+            "🔓 Canal Liberado",
+            f"""
+📌 **Canal:**
+{ctx.channel.mention}
+
+🛡️ **Responsável:**
+{ctx.author.mention}
+
+O canal foi desbloqueado.
+""",
+            discord.Color.green()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # SLOWMODE
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(manage_channels=True)
+    async def slowmode(
+        self,
+        ctx,
+        segundos:int = 5
+    ):
+
+
+        if segundos < 0 or segundos > 21600:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Use um valor entre 0 e 21600 segundos."
+                )
+            )
+
+
+        await ctx.channel.edit(
+            slowmode_delay=segundos
+        )
+
+
+        embed = self.embed(
+            "🐢 Slowmode Alterado",
+            f"""
+📌 **Canal:**
+{ctx.channel.mention}
+
+⏱️ **Tempo:**
+{segundos} segundos
+
+🛡️ **Responsável:**
+{ctx.author.mention}
+""",
+            discord.Color.blue()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # ALTERAR APELIDO
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(manage_nicknames=True)
+    async def nick(
+        self,
+        ctx,
+        member:discord.Member = None,
+        *,
+        nome=None
+    ):
+
+
+        if member is None:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa marcar um usuário."
+                )
+            )
+
+
+        await member.edit(
+            nick=nome
+        )
+
+
+        embed = self.embed(
+            "✏️ Apelido Alterado",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+🆕 **Novo apelido:**
+{nome if nome else "Removido"}
+
+🛡️ **Responsável:**
+{ctx.author.mention}
+""",
+            discord.Color.purple()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
+    # TRATAMENTO DE ERROS DO COG
+    # ==================================
+
+    async def cog_command_error(
+        self,
+        ctx,
+        error
+    ):
+
+
+        if isinstance(
+            error,
+            commands.MissingPermissions
+        ):
+
+            return await ctx.send(
+                embed=self.embed(
+                    "🚫 Sem Permissão",
+                    "Você não tem permissão para usar esse comando."
+                )
+            )
+
+
+        if isinstance(
+            error,
+            commands.MissingRequiredArgument
+        ):
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Argumento Faltando",
+                    f"Falta informar: `{error.param.name}`"
+                )
+            )
+
+
+        if isinstance(
+            error,
+            commands.MemberNotFound
+        ):
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Usuário não encontrado",
+                    "Não encontrei esse membro no servidor."
+                )
+            )
+
+
+        raise error
+
+
+
+# ==================================
+# CARREGAR COG
+# ==================================
 
 async def setup(bot):
-    await bot.add_cog(Moderation(bot))
+
+    await bot.add_cog(
+        Moderation(bot)
+    )
