@@ -214,6 +214,83 @@ class Moderation(commands.Cog):
 
 
     # ==================================
+    # UNBAN
+    # ==================================
+
+    @commands.command()
+    @commands.has_permissions(ban_members=True)
+    async def unban(
+        self,
+        ctx,
+        user_id: int = None,
+        *,
+        reason="Não informado"
+    ):
+
+        if user_id is None:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você precisa informar o ID do usuário para desbanir."
+                )
+            )
+
+
+        try:
+
+            user = await self.bot.fetch_user(
+                user_id
+            )
+
+            await ctx.guild.unban(
+                user,
+                reason=reason
+            )
+
+
+            embed = self.embed(
+                "🔓 Usuário Desbanido",
+                f"""
+👤 **Usuário:**
+{user.mention}
+
+🛡️ **Moderador:**
+{ctx.author.mention}
+
+📝 **Motivo:**
+{reason}
+
+🆔 **ID:**
+{user.id}
+""",
+                discord.Color.green()
+            )
+
+
+            await ctx.send(
+                embed=embed
+            )
+
+
+            await self.enviar_log(
+                ctx.guild,
+                embed
+            )
+
+
+        except discord.NotFound:
+
+            await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Esse usuário não está banido ou o ID está incorreto."
+                )
+            )
+
+
+
+    # ==================================
     # KICK
     # ==================================
 
