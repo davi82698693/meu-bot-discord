@@ -13,7 +13,7 @@ from discord.ui import View
 CARGO_STAFF = "🛡️ Staff"
 CARGO_SUPORTE = "🛠️ Suporte"
 
-CATEGORIA_TICKETS = "📂 Atendimento"
+CATEGORIA_TICKETS = "🎫 ATENDIMENTO"
 
 CANAL_PAINEL = "🎫・suporte"
 CANAL_LOGS = "📋・logs-tickets"
