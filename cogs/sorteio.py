@@ -249,7 +249,7 @@ Quando terminar clique em **Criar Sorteio**.
     # BOTÃO CRIAR
     # ======================================================
 
-       @discord.ui.button(
+           @discord.ui.button(
         label="🚀 Criar Sorteio",
         style=discord.ButtonStyle.success,
         row=3
@@ -260,10 +260,10 @@ Quando terminar clique em **Criar Sorteio**.
         button: Button
     ):
 
-        if not self.premio:
+        if self.premio is None:
 
             return await interaction.response.send_message(
-                "❌ Defina um prêmio.",
+                "❌ Você precisa definir o prêmio.",
                 ephemeral=True
             )
 
@@ -271,15 +271,15 @@ Quando terminar clique em **Criar Sorteio**.
         if self.canal is None:
 
             return await interaction.response.send_message(
-                "❌ Escolha um canal.",
+                "❌ Você precisa escolher o canal do sorteio.",
                 ephemeral=True
             )
 
 
-        if not self.tempo:
+        if self.tempo is None:
 
             return await interaction.response.send_message(
-                "❌ Defina um tempo.",
+                "❌ Você precisa definir o tempo do sorteio.",
                 ephemeral=True
             )
 
@@ -300,8 +300,6 @@ Quando terminar clique em **Criar Sorteio**.
             "✅ Sorteio criado com sucesso!",
             ephemeral=True
         )
-
-
 
 # ==========================================================
 # SETUP
