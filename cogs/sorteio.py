@@ -249,9 +249,9 @@ Quando terminar clique em **Criar Sorteio**.
     # BOTÃO CRIAR
     # ======================================================
 
-    @discord.ui.button(
+       @discord.ui.button(
         label="🚀 Criar Sorteio",
-        style=discord.ButtonStyle.green,
+        style=discord.ButtonStyle.success,
         row=3
     )
     async def criar_sorteio(
@@ -267,12 +267,14 @@ Quando terminar clique em **Criar Sorteio**.
                 ephemeral=True
             )
 
+
         if self.canal is None:
 
             return await interaction.response.send_message(
                 "❌ Escolha um canal.",
                 ephemeral=True
             )
+
 
         if not self.tempo:
 
@@ -281,16 +283,23 @@ Quando terminar clique em **Criar Sorteio**.
                 ephemeral=True
             )
 
-        await iniciar_sorteio(
-    self.cog,
-    self,
-    interaction
-)
 
-await interaction.followup.send(
-    "✅ Sorteio criado!",
-    ephemeral=True
-)
+        await interaction.response.defer(
+            ephemeral=True
+        )
+
+
+        await iniciar_sorteio(
+            self.cog,
+            self,
+            interaction
+        )
+
+
+        await interaction.followup.send(
+            "✅ Sorteio criado com sucesso!",
+            ephemeral=True
+        )
 
 
 
@@ -796,15 +805,16 @@ Clique no botão abaixo para participar!
 
 
 
-    cog.sorteios[sorteio_id]["mensagem"] = mensagem.id
+       cog.sorteios[sorteio_id]["mensagem"] = mensagem.id
+
     cog.sorteios[sorteio_id]["canal"] = painel.canal.id
 
-asyncio.create_task(
-    iniciar_contagem(
-        cog,
-        sorteio_id
+    asyncio.create_task(
+        iniciar_contagem(
+            cog,
+            sorteio_id
+        )
     )
-)
 
 
 
