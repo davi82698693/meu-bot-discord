@@ -803,7 +803,7 @@ Clique no botão abaixo para participar!
 
 
 
-       cog.sorteios[sorteio_id]["mensagem"] = mensagem.id
+    cog.sorteios[sorteio_id]["mensagem"] = mensagem.id
 
     cog.sorteios[sorteio_id]["canal"] = painel.canal.id
 
