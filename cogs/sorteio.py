@@ -249,7 +249,7 @@ Quando terminar clique em **Criar Sorteio**.
     # BOTÃO CRIAR
     # ======================================================
 
-           @discord.ui.button(
+    @discord.ui.button(
         label="🚀 Criar Sorteio",
         style=discord.ButtonStyle.success,
         row=3
