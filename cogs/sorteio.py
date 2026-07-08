@@ -1,130 +1,331 @@
 import discord
-
-from discord.ext import commands
-from discord.ui import View, Modal, TextInput
+import asyncio
+import random
 
 from datetime import datetime
 
-
-
-# ==========================================
-# CONFIGURAÇÃO
-# ==========================================
-
-
-class ConfigSorteio:
-
-    def __init__(self):
-
-        self.premio = "❌ Não definido"
-
-        self.canal = "❌ Não definido"
-
-        self.tempo = "❌ Não definido"
-
-        self.requisitos = "❌ Nenhum"
+from discord.ext import commands
+from discord.ui import View, Button, Modal, TextInput, ChannelSelect
 
 
 
-# ==========================================
-# EMBED
-# ==========================================
+# ==========================================================
+# COG
+# ==========================================================
 
+class Sorteio(commands.Cog):
 
-def criar_embed(
-    titulo,
-    descricao,
-    cor=discord.Color.gold()
-):
+    def __init__(self, bot):
 
-    embed = discord.Embed(
+        self.bot = bot
 
-        title=titulo,
-
-        description=descricao,
-
-        color=cor,
-
-        timestamp=datetime.utcnow()
-
-    )
-
-
-    embed.set_footer(
-
-        text="🎉 Sistema Profissional de Sorteios"
-
-    )
-
-
-    return embed
+        self.sorteios = {}
 
 
 
+    def embed(
+        self,
+        titulo,
+        descricao,
+        cor=discord.Color.blurple()
+    ):
 
-def painel_texto(config):
+        embed = discord.Embed(
+            title=titulo,
+            description=descricao,
+            color=cor,
+            timestamp=datetime.utcnow()
+        )
 
-    return f"""
+        embed.set_footer(
+            text="🎉 Sistema Profissional de Sorteios"
+        )
 
-Configure seu sorteio usando os botões abaixo.
-
-
-🎁 **Prêmio**
-
-`{config.premio}`
-
-
-📢 **Canal**
-
-`{config.canal}`
-
-
-⏰ **Tempo**
-
-`{config.tempo}`
-
-
-👥 **Requisitos**
-
-`{config.requisitos}`
-
-
-Quando terminar:
-
-🚀 Clique em **Criar Sorteio**
-"""
+        return embed
 
 
 
+    @commands.command(name="sorteio")
+    @commands.has_permissions(manage_guild=True)
+
+    async def sorteio(self, ctx):
+
+        painel = PainelSorteio(self)
+
+        await ctx.send(
+            embed=painel.gerar_embed(),
+            view=painel
+        )
 
 
-# ==========================================
-# MODAL PRÊMIO
-# ==========================================
+
+# ==========================================================
+# PAINEL
+# ==========================================================
+
+class PainelSorteio(View):
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=600)
+
+        self.cog = cog
+
+        self.premio = ""
+
+        self.canal = None
+
+        self.tempo = ""
+
+        self.vencedores = 1
+
+        self.requisitos = "Nenhum"
 
 
-class PremioModal(Modal):
 
+    def gerar_embed(self):
 
-    def __init__(self, config, view):
+        embed = discord.Embed(
 
-        super().__init__(
+            title="🎉 Configuração do Sorteio",
 
-            title="🎁 Definir Prêmio"
+            description="""
+Configure todas as opções abaixo.
+
+Quando terminar clique em **Criar Sorteio**.
+""",
+
+            color=discord.Color.gold(),
+
+            timestamp=datetime.utcnow()
 
         )
 
-        self.config = config
+        embed.add_field(
+            name="🎁 Prêmio",
+            value=self.premio or "`Não definido`",
+            inline=False
+        )
 
-        self.view_original = view
+        embed.add_field(
+            name="📢 Canal",
+            value=self.canal.mention if self.canal else "`Não definido`",
+            inline=False
+        )
 
+        embed.add_field(
+            name="⏰ Tempo",
+            value=self.tempo or "`Não definido`",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🏆 Vencedores",
+            value=str(self.vencedores),
+            inline=True
+        )
+
+        embed.add_field(
+            name="📋 Requisitos",
+            value=self.requisitos,
+            inline=False
+        )
+
+        embed.set_footer(
+            text="Sistema Profissional de Sorteios"
+        )
+
+        return embed
+
+
+
+    # ======================================================
+    # BOTÃO PRÊMIO
+    # ======================================================
+
+    @discord.ui.button(
+        label="🎁 Prêmio",
+        style=discord.ButtonStyle.primary,
+        row=0
+    )
+    async def botao_premio(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        await interaction.response.send_modal(
+            ModalPremio(self)
+        )
+
+
+    # ======================================================
+    # BOTÃO CANAL
+    # ======================================================
+
+    @discord.ui.button(
+        label="📢 Canal",
+        style=discord.ButtonStyle.secondary,
+        row=0
+    )
+    async def botao_canal(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        await interaction.response.send_message(
+
+            "Selecione o canal abaixo.",
+
+            view=SelecionarCanal(self),
+
+            ephemeral=True
+
+        )
+
+
+    # ======================================================
+    # BOTÃO TEMPO
+    # ======================================================
+
+    @discord.ui.button(
+        label="⏰ Tempo",
+        style=discord.ButtonStyle.primary,
+        row=1
+    )
+    async def botao_tempo(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        await interaction.response.send_modal(
+            ModalTempo(self)
+        )
+
+
+    # ======================================================
+    # BOTÃO VENCEDORES
+    # ======================================================
+
+    @discord.ui.button(
+        label="🏆 Vencedores",
+        style=discord.ButtonStyle.success,
+        row=1
+    )
+    async def botao_vencedores(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        await interaction.response.send_modal(
+            ModalVencedores(self)
+        )
+
+
+    # ======================================================
+    # BOTÃO REQUISITOS
+    # ======================================================
+
+    @discord.ui.button(
+        label="📋 Requisitos",
+        style=discord.ButtonStyle.secondary,
+        row=2
+    )
+    async def botao_requisitos(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        await interaction.response.send_modal(
+            ModalRequisitos(self)
+        )
+
+
+    # ======================================================
+    # BOTÃO CRIAR
+    # ======================================================
+
+    @discord.ui.button(
+        label="🚀 Criar Sorteio",
+        style=discord.ButtonStyle.green,
+        row=3
+    )
+    async def criar_sorteio(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        if not self.premio:
+
+            return await interaction.response.send_message(
+                "❌ Defina um prêmio.",
+                ephemeral=True
+            )
+
+        if self.canal is None:
+
+            return await interaction.response.send_message(
+                "❌ Escolha um canal.",
+                ephemeral=True
+            )
+
+        if not self.tempo:
+
+            return await interaction.response.send_message(
+                "❌ Defina um tempo.",
+                ephemeral=True
+            )
+
+        await iniciar_sorteio(
+    self.cog,
+    self,
+    interaction
+)
+
+await interaction.followup.send(
+    "✅ Sorteio criado!",
+    ephemeral=True
+)
+
+
+
+# ==========================================================
+# SETUP
+# ==========================================================
+
+async def setup(bot):
+
+    await bot.add_cog(
+        Sorteio(bot)
+    )
+
+
+
+# ==========================================================
+# MODAL PRÊMIO
+# ==========================================================
+
+class ModalPremio(Modal):
+
+    def __init__(self, painel):
+
+        super().__init__(
+            title="🎁 Configurar Prêmio"
+        )
+
+        self.painel = painel
 
 
         self.nome = TextInput(
 
             label="Qual será o prêmio?",
 
-            placeholder="Ex: Nitro Discord 1 mês",
+            placeholder="Ex: Nitro, R$50, Cargo VIP...",
 
             max_length=100
 
@@ -137,450 +338,47 @@ class PremioModal(Modal):
 
 
 
-
     async def on_submit(
         self,
         interaction: discord.Interaction
     ):
 
-
-        self.config.premio = self.nome.value
-
+        self.painel.premio = self.nome.value
 
 
         await interaction.response.edit_message(
 
-            embed=criar_embed(
+            embed=self.painel.gerar_embed(),
 
-                "🎉 Criador de Sorteio",
-
-                painel_texto(
-
-                    self.config
-
-                )
-
-            ),
-
-            view=self.view_original
+            view=self.painel
 
         )
 
 
 
-
-
-# ==========================================
+# ==========================================================
 # MODAL TEMPO
-# ==========================================
-
-
-class TempoModal(Modal):
-
-
-    def __init__(self, config, view):
-
-        super().__init__(
-
-            title="⏰ Definir Tempo"
-
-        )
-
-
-        self.config = config
-
-        self.view_original = view
-
-
-
-        self.tempo = TextInput(
-
-            label="Tempo em minutos",
-
-            placeholder="Ex: 60",
-
-            max_length=5
-
-        )
-
-
-        self.add_item(
-            self.tempo
-        )
-
-
-
-
-    async def on_submit(
-        self,
-        interaction: discord.Interaction
-    ):
-
-
-        self.config.tempo = (
-
-            self.tempo.value
-
-            + " minutos"
-
-        )
-
-
-
-        await interaction.response.edit_message(
-
-            embed=criar_embed(
-
-                "🎉 Criador de Sorteio",
-
-                painel_texto(
-
-                    self.config
-
-                )
-
-            ),
-
-            view=self.view_original
-
-        )
-
-
-
-
-
-# ==========================================
-# COG
-# ==========================================
-
-
-class Sorteio(commands.Cog):
-
-
-    def __init__(self, bot):
-
-        self.bot = bot
-
-
-
-    @commands.command(
-        name="sorteio"
-    )
-
-    @commands.has_permissions(
-        manage_guild=True
-    )
-
-    async def sorteio(
-        self,
-        ctx
-    ):
-
-
-        config = ConfigSorteio()
-
-
-
-        await ctx.send(
-
-            embed=criar_embed(
-
-                "🎉 Criador de Sorteio",
-
-                painel_texto(
-
-                    config
-
-                )
-
-            ),
-
-            view=PainelSorteio(
-
-                config
-
-            )
-
-        )
-
-
-
-
-
-# ==========================================
-# PAINEL
-# ==========================================
-
-
-class PainelSorteio(View):
-
-
-    def __init__(self, config):
-
-        super().__init__(
-
-            timeout=None
-
-        )
-
-        self.config = config
-
-
-
-    @discord.ui.button(
-
-        label="🎁 Definir Prêmio",
-
-        style=discord.ButtonStyle.primary,
-
-        custom_id="premio"
-
-    )
-
-    async def premio(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_modal(
-
-            PremioModal(
-
-                self.config,
-
-                self
-
-            )
-
-        )
-
-
-
-
-    @discord.ui.button(
-
-        label="⏰ Definir Tempo",
-
-        style=discord.ButtonStyle.success,
-
-        custom_id="tempo"
-
-    )
-
-    async def tempo(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_modal(
-
-            TempoModal(
-
-                self.config,
-
-                self
-
-            )
-
-        )
-
-
-
-
-    @discord.ui.button(
-
-        label="📢 Escolher Canal",
-
-        style=discord.ButtonStyle.secondary,
-
-        custom_id="canal"
-
-    )
-
-    async def canal(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_message(
-
-            "📢 Escolha de canal entra na Parte 3.",
-
-            ephemeral=True
-
-        )
-
-
-
-
-
-    @discord.ui.button(
-
-        label="👥 Requisitos",
-
-        style=discord.ButtonStyle.secondary,
-
-        custom_id="requisitos"
-
-    )
-
-    async def requisitos(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_message(
-
-            "👥 Requisitos entram na Parte 3.",
-
-            ephemeral=True
-
-        )
-
-
-
-
-
-    @discord.ui.button(
-
-        label="🚀 Criar Sorteio",
-
-        style=discord.ButtonStyle.danger,
-
-        custom_id="criar"
-
-    )
-
-    async def criar(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_message(
-
-            embed=criar_embed(
-
-                "⚠️ Ainda falta configurar",
-
-                "Configure canal e requisitos antes de criar.",
-
-                discord.Color.red()
-
-            ),
-
-            ephemeral=True
-
-        )
-
-
-
-
-
-# ==========================================
-# SETUP
-# ==========================================
-
-
-async def setup(bot):
-
-    await bot.add_cog(
-
-        Sorteio(bot)
-
-    )
-
-
-
-# ==========================================================
-# MODAIS DE CONFIGURAÇÃO
 # ==========================================================
 
+class ModalTempo(Modal):
 
-class PremioModal(discord.ui.Modal):
-
-    def __init__(self, view):
-
-        super().__init__(
-            title="🎁 Configurar Prêmio"
-        )
-
-        self.view = view
-
-
-        self.premio = discord.ui.TextInput(
-            label="Prêmio do sorteio",
-            placeholder="Ex: Nitro, Cargo VIP, R$50...",
-            max_length=100
-        )
-
-        self.add_item(
-            self.premio
-        )
-
-
-
-    async def on_submit(self, interaction):
-
-        self.view.premio = self.premio.value
-
-
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="🎁 Prêmio definido",
-                description=f"Novo prêmio:\n\n**{self.premio.value}**",
-                color=discord.Color.green()
-            ),
-            ephemeral=True
-        )
-
-
-
-
-class TempoModal(discord.ui.Modal):
-
-    def __init__(self, view):
+    def __init__(self, painel):
 
         super().__init__(
             title="⏰ Configurar Tempo"
         )
 
-        self.view = view
+        self.painel = painel
 
 
-        self.tempo = discord.ui.TextInput(
+        self.tempo = TextInput(
+
             label="Tempo do sorteio",
-            placeholder="Ex: 10m, 1h, 2d",
+
+            placeholder="Ex: 1h, 30m, 2d",
+
             max_length=20
+
         )
 
 
@@ -590,39 +388,47 @@ class TempoModal(discord.ui.Modal):
 
 
 
-    async def on_submit(self, interaction):
+    async def on_submit(
+        self,
+        interaction: discord.Interaction
+    ):
 
-        self.view.tempo = self.tempo.value
+        self.painel.tempo = self.tempo.value
 
 
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="⏰ Tempo definido",
-                description=f"O sorteio irá durar:\n\n**{self.tempo.value}**",
-                color=discord.Color.green()
-            ),
-            ephemeral=True
+        await interaction.response.edit_message(
+
+            embed=self.painel.gerar_embed(),
+
+            view=self.painel
+
         )
 
 
 
+# ==========================================================
+# MODAL VENCEDORES
+# ==========================================================
 
+class ModalVencedores(Modal):
 
-class VencedoresModal(discord.ui.Modal):
-
-    def __init__(self, view):
+    def __init__(self, painel):
 
         super().__init__(
             title="🏆 Quantidade de vencedores"
         )
 
-        self.view = view
+        self.painel = painel
 
 
-        self.quantidade = discord.ui.TextInput(
+        self.quantidade = TextInput(
+
             label="Número de vencedores",
+
             placeholder="Ex: 1",
+
             max_length=3
+
         )
 
 
@@ -632,55 +438,70 @@ class VencedoresModal(discord.ui.Modal):
 
 
 
-    async def on_submit(self, interaction):
+    async def on_submit(
+        self,
+        interaction: discord.Interaction
+    ):
 
         try:
 
-            self.view.vencedores = int(
+            numero = int(
                 self.quantidade.value
             )
 
 
+            if numero <= 0:
+
+                raise ValueError
+
+
+
+            self.painel.vencedores = numero
+
+
         except:
 
+
             return await interaction.response.send_message(
-                "❌ Digite apenas números.",
+
+                "❌ Digite um número válido.",
+
                 ephemeral=True
+
             )
 
 
 
-        await interaction.response.send_message(
-            embed=discord.Embed(
-                title="🏆 Vencedores definidos",
-                description=f"Quantidade:\n\n**{self.view.vencedores}**",
-                color=discord.Color.green()
-            ),
-            ephemeral=True
+        await interaction.response.edit_message(
+
+            embed=self.painel.gerar_embed(),
+
+            view=self.painel
+
         )
 
 
 
+# ==========================================================
+# MODAL REQUISITOS
+# ==========================================================
 
+class ModalRequisitos(Modal):
 
-
-class RequisitosModal(discord.ui.Modal):
-
-    def __init__(self, view):
+    def __init__(self, painel):
 
         super().__init__(
             title="📋 Requisitos"
         )
 
+        self.painel = painel
 
-        self.view = view
 
-
-        self.requisitos = discord.ui.TextInput(
+        self.requisito = TextInput(
 
             label="Requisitos para participar",
 
-            placeholder="Ex: Ter cargo Membro, estar no servidor, etc",
+            placeholder="Ex: Ter cargo membro, estar no servidor há 7 dias...",
 
             style=discord.TextStyle.paragraph,
 
@@ -690,360 +511,34 @@ class RequisitosModal(discord.ui.Modal):
 
 
         self.add_item(
-            self.requisitos
+            self.requisito
         )
 
 
 
-    async def on_submit(self, interaction):
-
-        self.view.requisitos = self.requisitos.value
-
-
-
-        await interaction.response.send_message(
-
-            embed=discord.Embed(
-
-                title="📋 Requisitos definidos",
-
-                description=self.requisitos.value,
-
-                color=discord.Color.green()
-
-            ),
-
-            ephemeral=True
-
-        )
-
-
-
-
-
-# ==========================================================
-# VIEW PRINCIPAL DO PAINEL
-# ==========================================================
-
-
-class PainelSorteio(View):
-
-
-    def __init__(self):
-
-        super().__init__(
-            timeout=None
-        )
-
-
-        self.canal = None
-
-        self.premio = "Não configurado"
-
-        self.tempo = "Não configurado"
-
-        self.vencedores = 1
-
-        self.requisitos = "Nenhum"
-
-
-
-    def atualizar_embed(self):
-
-        embed = discord.Embed(
-
-            title="🎉 Configuração de Sorteio",
-
-            description=f"""
-
-🎁 **Prêmio**
-{self.premio}
-
-
-⏰ **Tempo**
-{self.tempo}
-
-
-🏆 **Vencedores**
-{self.vencedores}
-
-
-📋 **Requisitos**
-{self.requisitos}
-
-
-📢 **Canal**
-{self.canal if self.canal else "Não selecionado"}
-
-""",
-
-            color=discord.Color.gold()
-
-        )
-
-
-        embed.set_footer(
-            text="Sistema profissional de sorteios"
-        )
-
-
-        return embed
-
-
-
-
-
-
-    @discord.ui.button(
-
-        label="🎁 Prêmio",
-
-        style=discord.ButtonStyle.primary
-
-    )
-
-    async def premio(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_modal(
-
-            PremioModal(
-                self
-            )
-
-        )
-
-
-
-
-    @discord.ui.button(
-
-        label="⏰ Tempo",
-
-        style=discord.ButtonStyle.primary
-
-    )
-
-    async def tempo(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_modal(
-
-            TempoModal(
-                self
-            )
-
-        )
-
-
-
-
-    @discord.ui.button(
-
-        label="🏆 Vencedores",
-
-        style=discord.ButtonStyle.success
-
-    )
-
-    async def vencedores(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_modal(
-
-            VencedoresModal(
-                self
-            )
-
-        )
-
-
-
-
-    @discord.ui.button(
-
-        label="📋 Requisitos",
-
-        style=discord.ButtonStyle.secondary
-
-    )
-
-    async def requisitos(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        await interaction.response.send_modal(
-
-            RequisitosModal(
-                self
-            )
-
-        )
-
-
-
-
-    @discord.ui.button(
-
-        label="🚀 Criar Sorteio",
-
-        style=discord.ButtonStyle.danger
-
-    )
-
-    async def criar(
-
-        self,
-
-        interaction,
-
-        button
-
-    ):
-
-
-        if self.canal is None:
-
-            return await interaction.response.send_message(
-
-                "❌ Você precisa selecionar um canal.",
-
-                ephemeral=True
-
-            )
-
-
-        if self.premio == "Não configurado":
-
-            return await interaction.response.send_message(
-
-                "❌ Configure o prêmio primeiro.",
-
-                ephemeral=True
-
-            )
-
-
-        await interaction.response.send_message(
-
-            embed=discord.Embed(
-
-                title="✅ Sorteio criado",
-
-                description="O sorteio foi enviado com sucesso.",
-
-                color=discord.Color.green()
-
-            ),
-
-            ephemeral=True
-
-        )
-
-
-
-# ==========================================================
-# SISTEMA DE CRIAÇÃO DO SORTEIO
-# ==========================================================
-
-
-sorteios_ativos = {}
-
-
-
-
-# ==========================================================
-# SELECT DE CANAL
-# ==========================================================
-
-
-class SelecionarCanal(discord.ui.ChannelSelect):
-
-    def __init__(self, painel):
-
-        self.painel = painel
-
-        super().__init__(
-            placeholder="📢 Selecione o canal do sorteio",
-            channel_types=[
-                discord.ChannelType.text
-            ],
-            min_values=1,
-            max_values=1
-        )
-
-
-
-    async def callback(
+    async def on_submit(
         self,
         interaction: discord.Interaction
     ):
 
-
-        canal = self.values[0]
-
-
-        self.painel.canal = canal
+        self.painel.requisitos = self.requisito.value
 
 
+        await interaction.response.edit_message(
 
-        await interaction.response.send_message(
+            embed=self.painel.gerar_embed(),
 
-            embed=discord.Embed(
-
-                title="📢 Canal definido",
-
-                description=f"""
-O sorteio será enviado em:
-
-{canal.mention}
-""",
-
-                color=discord.Color.green()
-
-            ),
-
-            ephemeral=True
+            view=self.painel
 
         )
 
 
 
+# ==========================================================
+# SELECIONAR CANAL
+# ==========================================================
 
-
-
-class EscolherCanalView(discord.ui.View):
+class SelecionarCanal(View):
 
     def __init__(self, painel):
 
@@ -1051,63 +546,67 @@ class EscolherCanalView(discord.ui.View):
             timeout=60
         )
 
+        self.painel = painel
+
 
         self.add_item(
 
-            SelecionarCanal(
-                painel
+            ChannelSelect(
+
+                placeholder="Escolha o canal do sorteio",
+
+                channel_types=[
+                    discord.ChannelType.text
+                ]
+
             )
 
         )
 
 
-
-
-
-# ==========================================================
-# BOTÃO DE ESCOLHER CANAL
-# ==========================================================
-
-
-async def abrir_selecao_canal(
-    interaction,
-    painel
-):
-
-    await interaction.response.send_message(
-
-        embed=discord.Embed(
-
-            title="📢 Escolha o canal",
-
-            description="Selecione abaixo onde o sorteio será enviado.",
-
-            color=discord.Color.blurple()
-
-        ),
-
-        view=EscolherCanalView(
-            painel
-        ),
-
-        ephemeral=True
-
+    @discord.ui.select(
+        cls=ChannelSelect
     )
+    async def selecionar(
+
+        self,
+
+        interaction: discord.Interaction,
+
+        select: ChannelSelect
+
+    ):
+
+
+        canal = select.values[0]
+
+
+        self.painel.canal = canal
+
+
+        await interaction.response.edit_message(
+
+            content="✅ Canal selecionado.",
+
+            view=None
+
+        )
 
 
 
 # ==========================================================
-# BOTÃO DE PARTICIPAR DO SORTEIO
+# BOTÃO PARTICIPAR
 # ==========================================================
 
+class ParticiparSorteio(View):
 
-class BotaoParticipar(discord.ui.View):
-
-    def __init__(self):
+    def __init__(self, sorteio_id):
 
         super().__init__(
             timeout=None
         )
+
+        self.sorteio_id = sorteio_id
 
 
 
@@ -1132,25 +631,16 @@ class BotaoParticipar(discord.ui.View):
     ):
 
 
-        sorteio = sorteios_ativos.get(
-            interaction.message.id
+        cog = interaction.client.get_cog(
+            "Sorteio"
         )
 
 
-        if sorteio is None:
-
+        if cog is None:
 
             return await interaction.response.send_message(
 
-                embed=discord.Embed(
-
-                    title="❌ Sorteio encerrado",
-
-                    description="Este sorteio não está mais ativo.",
-
-                    color=discord.Color.red()
-
-                ),
+                "❌ Sistema indisponível.",
 
                 ephemeral=True
 
@@ -1158,20 +648,16 @@ class BotaoParticipar(discord.ui.View):
 
 
 
-        if interaction.user.id in sorteio["participantes"]:
+        dados = cog.sorteios.get(
+            self.sorteio_id
+        )
 
+
+        if dados is None:
 
             return await interaction.response.send_message(
 
-                embed=discord.Embed(
-
-                    title="⚠️ Você já participa",
-
-                    description="Você já entrou neste sorteio.",
-
-                    color=discord.Color.orange()
-
-                ),
+                "❌ Esse sorteio não existe mais.",
 
                 ephemeral=True
 
@@ -1179,72 +665,31 @@ class BotaoParticipar(discord.ui.View):
 
 
 
-        sorteio["participantes"].append(
-
-            interaction.user.id
-
-        )
+        usuario = interaction.user.id
 
 
 
-        embed = interaction.message.embeds[0]
+        if usuario in dados["participantes"]:
 
+            return await interaction.response.send_message(
 
-        participantes = len(
+                "⚠️ Você já está participando.",
 
-            sorteio["participantes"]
+                ephemeral=True
 
-        )
-
-
-        texto_antigo = (
-
-            f"👥 **Participantes:** "
-
-            f"{participantes - 1}"
-
-        )
-
-
-        texto_novo = (
-
-            f"👥 **Participantes:** "
-
-            f"{participantes}"
-
-        )
+            )
 
 
 
-        embed.description = embed.description.replace(
-
-            texto_antigo,
-
-            texto_novo
-
-        )
-
-
-
-        await interaction.message.edit(
-
-            embed=embed
-
+        dados["participantes"].append(
+            usuario
         )
 
 
 
         await interaction.response.send_message(
 
-            embed=discord.Embed(
-
-                title="🎉 Participação confirmada",
-
-                description="Você entrou no sorteio!",
-
-                color=discord.Color.green()
-
-            ),
+            "✅ Você entrou no sorteio!",
 
             ephemeral=True
 
@@ -1252,80 +697,60 @@ class BotaoParticipar(discord.ui.View):
 
 
 
-
-
-
 # ==========================================================
-# FUNÇÃO PARA ENVIAR O SORTEIO
+# CRIAR SORTEIO
 # ==========================================================
 
+async def iniciar_sorteio(
 
-async def enviar_sorteio(
+    cog,
 
-    interaction,
+    painel,
 
-    painel
+    interaction
 
 ):
 
 
-    if painel.canal is None:
-
-
-        return await interaction.response.send_message(
-
-            embed=discord.Embed(
-
-                title="❌ Canal não definido",
-
-                description="Selecione o canal antes de criar o sorteio.",
-
-                color=discord.Color.red()
-
-            ),
-
-            ephemeral=True
-
+    sorteio_id = str(
+        random.randint(
+            100000,
+            999999
         )
+    )
 
 
 
-    if painel.premio == "Não configurado":
+    cog.sorteios[sorteio_id] = {
 
 
-        return await interaction.response.send_message(
+        "premio": painel.premio,
 
-            embed=discord.Embed(
 
-                title="❌ Prêmio não configurado",
+        "tempo": painel.tempo,
 
-                description="Defina o prêmio do sorteio.",
 
-                color=discord.Color.red()
+        "vencedores": painel.vencedores,
 
-            ),
 
-            ephemeral=True
+        "requisitos": painel.requisitos,
 
-        )
+
+        "participantes": []
+
+    }
 
 
 
     embed = discord.Embed(
 
-        title="🎉 SORTEIO 🎉",
+        title="🎉 NOVO SORTEIO",
 
         description=f"""
 
 🎁 **Prêmio**
 
 {painel.premio}
-
-
-
-⏰ **Duração**
-
-{painel.tempo}
 
 
 
@@ -1341,7 +766,9 @@ async def enviar_sorteio(
 
 
 
-👥 **Participantes:** 0
+⏰ **Duração**
+
+{painel.tempo}
 
 
 
@@ -1356,244 +783,263 @@ Clique no botão abaixo para participar!
     )
 
 
-    embed.set_footer(
-
-        text="Boa sorte a todos 🍀"
-
-    )
-
-
 
     mensagem = await painel.canal.send(
 
         embed=embed,
 
-        view=BotaoParticipar()
-
-    )
-
-
-
-    sorteios_ativos[mensagem.id] = {
-
-
-        "premio":
-
-        painel.premio,
-
-
-        "tempo":
-
-        painel.tempo,
-
-
-        "vencedores":
-
-        painel.vencedores,
-
-
-        "requisitos":
-
-        painel.requisitos,
-
-
-        "participantes":
-
-        [],
-
-
-        "mensagem":
-
-        mensagem
-
-
-    }
-
-
-
-    await interaction.response.send_message(
-
-        embed=discord.Embed(
-
-            title="✅ Sorteio criado",
-
-            description=f"O sorteio foi enviado em {painel.canal.mention}",
-
-            color=discord.Color.green()
-
-        ),
-
-        ephemeral=True
-
-    )
-
-
-
-# ==========================================================
-# EXTENSÃO DO PAINEL DE CONFIGURAÇÃO
-# ==========================================================
-
-
-class PainelSorteioFinal(PainelSorteio):
-
-
-    def __init__(self):
-
-        super().__init__()
-
-
-
-    # ------------------------------------------------------
-    # ESCOLHER CANAL
-    # ------------------------------------------------------
-
-
-    @discord.ui.button(
-
-        label="📢 Canal",
-
-        style=discord.ButtonStyle.secondary,
-
-        row=2
-
-    )
-
-    async def canal_sorteio(
-
-        self,
-
-        interaction: discord.Interaction,
-
-        button: discord.ui.Button
-
-    ):
-
-
-        await abrir_selecao_canal(
-
-            interaction,
-
-            self
-
+        view=ParticiparSorteio(
+            sorteio_id
         )
 
-
-
-
-    # ------------------------------------------------------
-    # CRIAR SORTEIO
-    # ------------------------------------------------------
-
-
-    @discord.ui.button(
-
-        label="🚀 Iniciar Sorteio",
-
-        style=discord.ButtonStyle.success,
-
-        row=3
-
     )
 
-    async def iniciar(
-
-        self,
-
-        interaction: discord.Interaction,
-
-        button: discord.ui.Button
-
-    ):
 
 
-        await enviar_sorteio(
+    cog.sorteios[sorteio_id]["mensagem"] = mensagem.id
+    cog.sorteios[sorteio_id]["canal"] = painel.canal.id
 
-            interaction,
-
-            self
-
-        )
-
-
-
-
-
-# ==========================================================
-# COMANDO !SORTEIO
-# ==========================================================
-
-
-@bot.command(
-    name="sorteio"
+asyncio.create_task(
+    iniciar_contagem(
+        cog,
+        sorteio_id
+    )
 )
 
-async def sorteio(
 
-    ctx
+
+# ==========================================================
+# FINALIZAÇÃO DO SETUP DO CRIAR
+# ==========================================================
+
+
+
+# ==========================================================
+# CONVERTER TEMPO
+# ==========================================================
+
+def converter_tempo(tempo):
+
+    try:
+
+        numero = int(
+            tempo[:-1]
+        )
+
+        unidade = tempo[-1].lower()
+
+
+        if unidade == "m":
+
+            return numero * 60
+
+
+        if unidade == "h":
+
+            return numero * 3600
+
+
+        if unidade == "d":
+
+            return numero * 86400
+
+
+    except:
+
+        return None
+
+
+
+# ==========================================================
+# FINALIZAR SORTEIO
+# ==========================================================
+
+async def finalizar_sorteio(
+
+    cog,
+
+    sorteio_id
 
 ):
 
 
-    embed = discord.Embed(
-
-        title="🎉 Painel de Configuração de Sorteio",
-
-        description="""
-
-Configure seu sorteio usando os botões abaixo.
+    dados = cog.sorteios.get(
+        sorteio_id
+    )
 
 
-🎁 Prêmio
+    if dados is None:
 
-Defina o que será sorteado.
-
-
-⏰ Tempo
-
-Escolha a duração.
+        return
 
 
-🏆 Vencedores
 
-Defina quantas pessoas ganham.
-
-
-📋 Requisitos
-
-Defina regras para participar.
+    participantes = dados["participantes"]
 
 
-📢 Canal
 
-Escolha onde o sorteio será enviado.
+    canal = cog.bot.get_channel(
+
+        dados.get("canal")
+
+    )
 
 
-Quando terminar clique em:
 
-🚀 Iniciar Sorteio
+    if not participantes:
+
+
+        if canal:
+
+            await canal.send(
+
+                embed=discord.Embed(
+
+                    title="🎉 Sorteio encerrado",
+
+                    description="Ninguém participou do sorteio.",
+
+                    color=discord.Color.red()
+
+                )
+
+            )
+
+
+        del cog.sorteios[sorteio_id]
+
+        return
+
+
+
+    quantidade = min(
+
+        dados["vencedores"],
+
+        len(participantes)
+
+    )
+
+
+
+    vencedores = random.sample(
+
+        participantes,
+
+        quantidade
+
+    )
+
+
+
+    mencoes = []
+
+
+    for usuario in vencedores:
+
+        mencoes.append(
+
+            f"<@{usuario}>"
+
+        )
+
+
+
+    resultado = "\n".join(
+        mencoes
+    )
+
+
+
+    if canal:
+
+
+        await canal.send(
+
+            embed=discord.Embed(
+
+                title="🏆 Sorteio Finalizado!",
+
+                description=f"""
+
+🎁 **Prêmio**
+
+{dados["premio"]}
+
+
+
+🎉 **Vencedor(es)**
+
+{resultado}
 
 """,
 
-        color=discord.Color.gold(),
+                color=discord.Color.green(),
 
-        timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow()
+
+            )
+
+        )
+
+
+
+    del cog.sorteios[sorteio_id]
+
+
+
+# ==========================================================
+# INICIAR CONTAGEM
+# ==========================================================
+
+async def iniciar_contagem(
+
+    cog,
+
+    sorteio_id
+
+):
+
+
+    dados = cog.sorteios.get(
+
+        sorteio_id
 
     )
 
 
-    embed.set_footer(
+    if dados is None:
 
-        text="Sistema Profissional de Sorteios"
+        return
+
+
+
+    segundos = converter_tempo(
+
+        dados["tempo"]
+
+    )
+
+
+
+    if segundos is None:
+
+        return
+
+
+
+    await asyncio.sleep(
+
+        segundos
 
     )
 
 
 
-    await ctx.send(
+    await finalizar_sorteio(
 
-        embed=embed,
+        cog,
 
-        view=PainelSorteioFinal()
+        sorteio_id
 
     )
-
