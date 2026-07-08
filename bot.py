@@ -5,10 +5,11 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-from sistemas.canais import criar_canais
+from canais import criar_canais
 
 
 load_dotenv()
+
 
 
 intents = discord.Intents.default()
@@ -18,56 +19,68 @@ intents.members = True
 intents.presences = True
 
 
+
 bot = commands.Bot(
+
     command_prefix="!",
+
     intents=intents,
+
     help_command=None
+
 )
 
 
 
-# -------------------------
-# Inicialização
-# -------------------------
+# ==========================
+# ONLINE
+# ==========================
 
 @bot.event
 async def on_ready():
+
 
     print("==============================")
     print(f"Bot online: {bot.user}")
     print("==============================")
 
 
+    await criar_canais(bot)
+
+
+
     await bot.change_presence(
+
         activity=discord.Game(
+
             name="Servidor Profissional 🚀"
+
         )
+
     )
 
 
-    # Criar estrutura do servidor
 
-    for guild in bot.guilds:
+# ==========================
+# COGS
+# ==========================
 
-        await criar_canais(
-            guild
-        )
-
-
-
-# -------------------------
-# Carregar Cogs
-# -------------------------
 
 async def load_cogs():
 
+
     for arquivo in os.listdir("./cogs"):
+
 
         if arquivo.endswith(".py"):
 
+
             await bot.load_extension(
+
                 f"cogs.{arquivo[:-3]}"
+
             )
+
 
             print(
                 f"Cog carregado: {arquivo}"
@@ -75,13 +88,17 @@ async def load_cogs():
 
 
 
-# -------------------------
-# Iniciar bot
-# -------------------------
+
+# ==========================
+# START
+# ==========================
+
 
 async def main():
 
+
     async with bot:
+
 
         await load_cogs()
 
@@ -91,9 +108,8 @@ async def main():
         )
 
 
-        await bot.start(
-            token
-        )
+        await bot.start(token)
+
 
 
 
