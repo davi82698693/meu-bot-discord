@@ -1,101 +1,132 @@
 import discord
 
-from discord.ext import commands
-from datetime import datetime
+
+async def criar_canais(bot):
+
+    print("📂 Criando estrutura de canais...")
 
 
-# ==========================================
-# CONFIGURAÇÕES
-# ==========================================
-
-CATEGORIAS = [
-
-    "📌 INFORMAÇÕES",
-    "💬 COMUNIDADE",
-    "🎫 ATENDIMENTO",
-    "🔒 STAFF"
-
-]
+    for guild in bot.guilds:
 
 
-CANAIS = {
+        # ==========================
+        # CATEGORIAS
+        # ==========================
 
-    "📌 INFORMAÇÕES": [
+        categorias = [
 
-        "📢・anuncios",
-        "📜・regras",
-        "👋・boas-vindas"
+            "📌 INFORMAÇÕES",
 
-    ],
+            "💬 COMUNIDADE",
 
+            "🎫 ATENDIMENTO",
 
-    "💬 COMUNIDADE": [
+            "🔒 STAFF"
 
-        "💬・chat",
-        "🎮・jogos",
-        "📷・midia"
-
-    ],
+        ]
 
 
-    "🎫 ATENDIMENTO": [
-
-        "🎫・suporte"
-
-    ],
+        criadas = {}
 
 
-    "🔒 STAFF": [
-
-        "🔒・chat-staff",
-        "📋・logs"
-
-    ]
-
-}
+        for nome in categorias:
 
 
-
-# ==========================================
-# SISTEMA DE CANAIS
-# ==========================================
-
-class Canais(commands.Cog):
+            categoria = discord.utils.get(
+                guild.categories,
+                name=nome
+            )
 
 
-    def __init__(self, bot):
+            if categoria is None:
 
-        self.bot = bot
-
-
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-
-        print("📁 Sistema de canais carregado.")
-
-
-        for guild in self.bot.guilds:
-
-
-            for nome_categoria in CATEGORIAS:
-
-
-                categoria = discord.utils.get(
-
-                    guild.categories,
-
-                    name=nome_categoria
-
+                categoria = await guild.create_category(
+                    nome,
+                    reason="Sistema automático de canais"
                 )
 
 
-                if categoria is None:
+            criadas[nome] = categoria
 
 
-                    categoria = await guild.create_category(
 
-                        nome_categoria,
+        # ==========================
+        # CANAIS
+        # ==========================
+
+
+        canais = {
+
+
+            "📌 INFORMAÇÕES": [
+
+                "📢・anuncios",
+
+                "📜・regras",
+
+                "📝・atualizacoes"
+
+            ],
+
+
+
+            "💬 COMUNIDADE": [
+
+                "💬・chat",
+
+                "🤖・comandos",
+
+                "🎨・midia"
+
+            ],
+
+
+
+            "🎫 ATENDIMENTO": [
+
+                "🎫・suporte",
+
+                "📋・tickets"
+
+            ],
+
+
+
+            "🔒 STAFF": [
+
+                "🛡️・staff-chat",
+
+                "📋・logs"
+
+            ]
+
+        }
+
+
+
+        for categoria_nome, lista_canais in canais.items():
+
+
+            categoria = criadas[categoria_nome]
+
+
+            for nome_canal in lista_canais:
+
+
+                existe = discord.utils.get(
+                    guild.text_channels,
+                    name=nome_canal
+                )
+
+
+                if existe is None:
+
+
+                    await guild.create_text_channel(
+
+                        nome_canal,
+
+                        category=categoria,
 
                         reason="Sistema automático de canais"
 
@@ -103,41 +134,6 @@ class Canais(commands.Cog):
 
 
 
-                for nome_canal in CANAIS[nome_categoria]:
-
-
-                    canal = discord.utils.get(
-
-                        guild.text_channels,
-
-                        name=nome_canal
-
-                    )
-
-
-                    if canal is None:
-
-
-                        await guild.create_text_channel(
-
-                            nome_canal,
-
-                            category=categoria,
-
-                            reason="Sistema automático de canais"
-
-                        )
-
-
-
-# ==========================================
-# CARREGAR COG
-# ==========================================
-
-async def setup(bot):
-
-    await bot.add_cog(
-
-        Canais(bot)
-
-    )
+        print(
+            f"✅ Canais configurados em {guild.name}"
+        )
