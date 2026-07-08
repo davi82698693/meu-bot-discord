@@ -1,16 +1,29 @@
 import discord
 
+from discord.ext import commands
+from datetime import datetime
+
 
 # ==========================================
-# ESTRUTURA DO SERVIDOR
+# CONFIGURAÇÕES
 # ==========================================
 
-ESTRUTURA = {
+CATEGORIAS = [
+
+    "📌 INFORMAÇÕES",
+    "💬 COMUNIDADE",
+    "🎫 ATENDIMENTO",
+    "🔒 STAFF"
+
+]
+
+
+CANAIS = {
 
     "📌 INFORMAÇÕES": [
 
-        "📜・regras",
         "📢・anuncios",
+        "📜・regras",
         "👋・boas-vindas"
 
     ],
@@ -19,25 +32,23 @@ ESTRUTURA = {
     "💬 COMUNIDADE": [
 
         "💬・chat",
-        "🤖・comandos",
-        "🎮・midia"
+        "🎮・jogos",
+        "📷・midia"
 
     ],
 
 
-    "🎫 SUPORTE": [
+    "🎫 ATENDIMENTO": [
 
-        "🎫・suporte",
-        "📋・logs-tickets"
+        "🎫・suporte"
 
     ],
 
 
-    "🛡️ STAFF": [
+    "🔒 STAFF": [
 
         "🔒・chat-staff",
-        "📋・logs-moderação",
-        "📋・logs-servidor"
+        "📋・logs"
 
     ]
 
@@ -46,53 +57,87 @@ ESTRUTURA = {
 
 
 # ==========================================
-# CRIAR CATEGORIAS E CANAIS
+# SISTEMA DE CANAIS
 # ==========================================
 
-async def criar_canais(guild):
+class Canais(commands.Cog):
 
 
-    for nome_categoria, canais in ESTRUTURA.items():
+    def __init__(self, bot):
 
-
-        # Procura categoria existente
-
-        categoria = discord.utils.get(
-            guild.categories,
-            name=nome_categoria
-        )
-
-
-        # Se não existir, cria
-
-        if categoria is None:
-
-            categoria = await guild.create_category(
-                name=nome_categoria,
-                reason="Configuração automática do servidor"
-            )
+        self.bot = bot
 
 
 
-        # Criar canais dentro dela
+    @commands.Cog.listener()
+    async def on_ready(self):
 
-        for nome_canal in canais:
-
-
-            canal = discord.utils.get(
-                guild.text_channels,
-                name=nome_canal
-            )
+        print("📁 Sistema de canais carregado.")
 
 
-            if canal is None:
+        for guild in self.bot.guilds:
 
-                await guild.create_text_channel(
 
-                    name=nome_canal,
+            for nome_categoria in CATEGORIAS:
 
-                    category=categoria,
 
-                    reason="Configuração automática do servidor"
+                categoria = discord.utils.get(
+
+                    guild.categories,
+
+                    name=nome_categoria
 
                 )
+
+
+                if categoria is None:
+
+
+                    categoria = await guild.create_category(
+
+                        nome_categoria,
+
+                        reason="Sistema automático de canais"
+
+                    )
+
+
+
+                for nome_canal in CANAIS[nome_categoria]:
+
+
+                    canal = discord.utils.get(
+
+                        guild.text_channels,
+
+                        name=nome_canal
+
+                    )
+
+
+                    if canal is None:
+
+
+                        await guild.create_text_channel(
+
+                            nome_canal,
+
+                            category=categoria,
+
+                            reason="Sistema automático de canais"
+
+                        )
+
+
+
+# ==========================================
+# CARREGAR COG
+# ==========================================
+
+async def setup(bot):
+
+    await bot.add_cog(
+
+        Canais(bot)
+
+    )
