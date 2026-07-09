@@ -615,7 +615,16 @@ class SelecionarCanal(View):
     ):
 
 
-        canal = select.values[0]
+        canal_selecionado = select.values[0]
+
+
+        canal = interaction.guild.get_channel(canal_selecionado.id)
+
+        if canal is None:
+            canal = canal_selecionado.resolve()
+
+        if canal is None:
+            canal = await interaction.guild.fetch_channel(canal_selecionado.id)
 
 
         self.painel.canal = canal
