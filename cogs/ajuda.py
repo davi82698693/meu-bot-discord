@@ -25,6 +25,7 @@ CATEGORIAS = {
         "nome": "🛡️ Moderação",
         "descricao": "Comandos para manter o servidor organizado e seguro.",
         "comandos": [
+            ("!setup-moderacao", "Cria/verifica os cargos e o canal de logs de moderação."),
             ("!ban @usuário [motivo]", "Bane um membro do servidor."),
             ("!unban <ID> [motivo]", "Desbane um usuário pelo ID."),
             ("!kick @usuário [motivo]", "Expulsa um membro do servidor."),
@@ -56,6 +57,7 @@ CATEGORIAS = {
         "nome": "🎫 Tickets",
         "descricao": "Sistema de atendimento por botões (sem comandos de texto).",
         "comandos": [
+            ("!setup-tickets", "Cria/verifica cargos, categoria, canal de logs e o painel de tickets."),
             ("🎫・suporte", "Painel fixo no canal — clique em Dúvidas, Suporte ou Denúncias para abrir um ticket."),
             ("!painel-ticket [#canal]", "Reenvia/recria o painel de tickets (no canal atual ou no indicado)."),
             ("🟢 Assumir Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
@@ -69,6 +71,7 @@ CATEGORIAS = {
         "nome": "🔰 Verificação",
         "descricao": "Sistema de verificação de novos membros por botão (sem comandos de texto).",
         "comandos": [
+            ("!setup-verificacao", "Cria/verifica o cargo e o canal de verificação."),
             ("🔓 Verificar", "Botão fixo no canal 🔰・verificacao — libera o acesso ao servidor."),
         ]
     },
