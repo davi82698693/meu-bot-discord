@@ -130,107 +130,138 @@ class Tickets(commands.Cog):
         )
 
 
-        for guild in self.bot.guilds:
+    # ======================================================
+    # CONFIGURAR SISTEMA MANUALMENTE
+    # ======================================================
+
+    @commands.command(name="setup-tickets")
+    @commands.has_permissions(manage_guild=True)
+    async def setup_tickets(self, ctx):
+
+        guild = ctx.guild
+
+        criado_algo = False
 
 
-            # -----------------------------
-            # CRIAR CARGO STAFF
-            # -----------------------------
+        # -----------------------------
+        # CRIAR CARGO STAFF
+        # -----------------------------
 
-            staff = discord.utils.get(
-                guild.roles,
-                name=CARGO_STAFF
+        staff = discord.utils.get(
+            guild.roles,
+            name=CARGO_STAFF
+        )
+
+
+        if staff is None:
+
+            await guild.create_role(
+                name=CARGO_STAFF,
+                reason="Sistema de tickets"
+            )
+
+            criado_algo = True
+
+
+
+        # -----------------------------
+        # CRIAR CARGO SUPORTE
+        # -----------------------------
+
+        suporte = discord.utils.get(
+            guild.roles,
+            name=CARGO_SUPORTE
+        )
+
+
+        if suporte is None:
+
+            await guild.create_role(
+                name=CARGO_SUPORTE,
+                reason="Sistema de tickets"
+            )
+
+            criado_algo = True
+
+
+
+        # -----------------------------
+        # CRIAR CATEGORIA
+        # -----------------------------
+
+        categoria = discord.utils.get(
+            guild.categories,
+            name=CATEGORIA_TICKETS
+        )
+
+
+        if categoria is None:
+
+            await guild.create_category(
+                CATEGORIA_TICKETS,
+                reason="Sistema de tickets"
+            )
+
+            criado_algo = True
+
+
+
+        # -----------------------------
+        # CRIAR LOGS
+        # -----------------------------
+
+        logs = discord.utils.get(
+            guild.text_channels,
+            name=CANAL_LOGS
+        )
+
+
+        if logs is None:
+
+            await guild.create_text_channel(
+                CANAL_LOGS,
+                reason="Sistema de tickets"
+            )
+
+            criado_algo = True
+
+
+
+        # -----------------------------
+        # CRIAR PAINEL
+        # -----------------------------
+
+        painel = discord.utils.get(
+            guild.text_channels,
+            name=CANAL_PAINEL
+        )
+
+
+        if painel is None:
+
+            painel = await guild.create_text_channel(
+                CANAL_PAINEL,
+                reason="Sistema de tickets"
             )
 
 
-            if staff is None:
-
-                await guild.create_role(
-                    name=CARGO_STAFF,
-                    reason="Sistema de tickets"
-                )
-
-
-
-            # -----------------------------
-            # CRIAR CARGO SUPORTE
-            # -----------------------------
-
-            suporte = discord.utils.get(
-                guild.roles,
-                name=CARGO_SUPORTE
+            await painel.send(
+                embed=criar_embed_painel(guild),
+                view=PainelTickets()
             )
 
-
-            if suporte is None:
-
-                await guild.create_role(
-                    name=CARGO_SUPORTE,
-                    reason="Sistema de tickets"
-                )
+            criado_algo = True
 
 
-
-            # -----------------------------
-            # CRIAR CATEGORIA
-            # -----------------------------
-
-            categoria = discord.utils.get(
-                guild.categories,
-                name=CATEGORIA_TICKETS
+        await ctx.send(
+            embed=criar_embed(
+                "✅ Setup de Tickets" if criado_algo else "ℹ️ Já configurado",
+                "Estrutura de tickets criada/verificada com sucesso."
+                if criado_algo
+                else "Tudo que faltava já existia, nada novo foi criado.",
+                discord.Color.green()
             )
-
-
-            if categoria is None:
-
-                await guild.create_category(
-                    CATEGORIA_TICKETS,
-                    reason="Sistema de tickets"
-                )
-
-
-
-            # -----------------------------
-            # CRIAR LOGS
-            # -----------------------------
-
-            logs = discord.utils.get(
-                guild.text_channels,
-                name=CANAL_LOGS
-            )
-
-
-            if logs is None:
-
-                await guild.create_text_channel(
-                    CANAL_LOGS,
-                    reason="Sistema de tickets"
-                )
-
-
-
-            # -----------------------------
-            # CRIAR PAINEL
-            # -----------------------------
-
-            painel = discord.utils.get(
-                guild.text_channels,
-                name=CANAL_PAINEL
-            )
-
-
-            if painel is None:
-
-                painel = await guild.create_text_channel(
-                    CANAL_PAINEL,
-                    reason="Sistema de tickets"
-                )
-
-
-                await painel.send(
-                    embed=criar_embed_painel(guild),
-                    view=PainelTickets()
-                )
+        )
 
 
 
