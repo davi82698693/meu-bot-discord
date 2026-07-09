@@ -11,72 +11,104 @@ class Moderation(commands.Cog):
 
 
     # ==================================
-    # CONFIGURAÇÃO AUTOMÁTICA DO SERVIDOR
+    # LOG DE INICIALIZAÇÃO
     # ==================================
 
     @commands.Cog.listener()
     async def on_ready(self):
 
-        for guild in self.bot.guilds:
+        print("🛡️ Sistema de moderação carregado.")
 
-            # Criar cargo Muted
 
-            muted = discord.utils.get(
-                guild.roles,
-                name="🔇 Muted"
+
+    # ==================================
+    # CONFIGURAR SISTEMA MANUALMENTE
+    # ==================================
+
+    @commands.command(name="setup-moderacao")
+    @commands.has_permissions(manage_guild=True)
+    async def setup_moderacao(self, ctx):
+
+        guild = ctx.guild
+
+        criado_algo = False
+
+
+        # Criar cargo Muted
+
+        muted = discord.utils.get(
+            guild.roles,
+            name="🔇 Muted"
+        )
+
+        if muted is None:
+
+            muted = await guild.create_role(
+                name="🔇 Muted",
+                reason="Sistema de moderação"
             )
 
-            if muted is None:
+            for channel in guild.channels:
 
-                muted = await guild.create_role(
-                    name="🔇 Muted",
-                    reason="Sistema de moderação"
-                )
+                try:
 
-                for channel in guild.channels:
+                    await channel.set_permissions(
+                        muted,
+                        send_messages=False,
+                        speak=False,
+                        add_reactions=False
+                    )
 
-                    try:
+                except:
+                    pass
 
-                        await channel.set_permissions(
-                            muted,
-                            send_messages=False,
-                            speak=False,
-                            add_reactions=False
-                        )
-
-                    except:
-                        pass
+            criado_algo = True
 
 
-            # Criar cargo Staff
+        # Criar cargo Staff
 
-            staff = discord.utils.get(
-                guild.roles,
-                name="🛡️ Staff"
+        staff = discord.utils.get(
+            guild.roles,
+            name="🛡️ Staff"
+        )
+
+        if staff is None:
+
+            await guild.create_role(
+                name="🛡️ Staff",
+                reason="Sistema de moderação"
             )
 
-            if staff is None:
-
-                await guild.create_role(
-                    name="🛡️ Staff",
-                    reason="Sistema de moderação"
-                )
+            criado_algo = True
 
 
-            # Criar canal de logs
+        # Criar canal de logs
 
-            logs = discord.utils.get(
-                guild.text_channels,
-                name="📋・logs-moderação"
+        logs = discord.utils.get(
+            guild.text_channels,
+            name="📋・logs-moderação"
+        )
+
+
+        if logs is None:
+
+            await guild.create_text_channel(
+                "📋・logs-moderação",
+                reason="Sistema de logs"
             )
 
+            criado_algo = True
 
-            if logs is None:
 
-                await guild.create_text_channel(
-                    "📋・logs-moderação",
-                    reason="Sistema de logs"
-                )
+        await ctx.send(
+            embed=self.embed(
+                "✅ Setup de Moderação" if criado_algo else "ℹ️ Já configurado",
+                "Estrutura de moderação criada/verificada com sucesso."
+                if criado_algo
+                else "Tudo que faltava já existia, nada novo foi criado.",
+                discord.Color.green()
+            )
+        )
 
 
 
@@ -394,7 +426,7 @@ class Moderation(commands.Cog):
             return await ctx.send(
                 embed=self.embed(
                     "❌ Erro",
-                    "O cargo 🔇 Muted não existe."
+                    "O cargo 🔇 Muted não existe. Use `!setup-moderacao` primeiro."
                 )
             )
 
