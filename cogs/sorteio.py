@@ -260,7 +260,7 @@ Quando terminar clique em **Criar Sorteio**.
         button: Button
     ):
 
-        if self.premio is None:
+        if not self.premio:
 
             return await interaction.response.send_message(
                 "❌ Você precisa definir o prêmio.",
@@ -276,10 +276,18 @@ Quando terminar clique em **Criar Sorteio**.
             )
 
 
-        if self.tempo is None:
+        if not self.tempo:
 
             return await interaction.response.send_message(
                 "❌ Você precisa definir o tempo do sorteio.",
+                ephemeral=True
+            )
+
+
+        if converter_tempo(self.tempo) is None:
+
+            return await interaction.response.send_message(
+                "❌ Tempo inválido. Use algo como `30m`, `1h` ou `2d`.",
                 ephemeral=True
             )
 
@@ -300,6 +308,41 @@ Quando terminar clique em **Criar Sorteio**.
             "✅ Sorteio criado com sucesso!",
             ephemeral=True
         )
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item
+    ):
+        import traceback
+
+        print("========== ERRO NO PainelSorteio ==========")
+        traceback.print_exception(
+            type(error), error, error.__traceback__
+        )
+        print("===============================================")
+
+        mensagem_erro = (
+            f"❌ Deu erro nesse botão:\n"
+            f"```{type(error).__name__}: {error}```"
+        )
+
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+        except Exception:
+            pass
+
+
 
 # ==========================================================
 # SETUP
@@ -556,23 +599,10 @@ class SelecionarCanal(View):
         self.painel = painel
 
 
-        self.add_item(
-
-            ChannelSelect(
-
-                placeholder="Escolha o canal do sorteio",
-
-                channel_types=[
-                    discord.ChannelType.text
-                ]
-
-            )
-
-        )
-
-
     @discord.ui.select(
-        cls=ChannelSelect
+        cls=ChannelSelect,
+        placeholder="Escolha o canal do sorteio",
+        channel_types=[discord.ChannelType.text]
     )
     async def selecionar(
 
@@ -598,6 +628,40 @@ class SelecionarCanal(View):
             view=None
 
         )
+
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item
+    ):
+        import traceback
+
+        print("========== ERRO NO SelecionarCanal ==========")
+        traceback.print_exception(
+            type(error), error, error.__traceback__
+        )
+        print("===============================================")
+
+        mensagem_erro = (
+            f"❌ Deu erro ao selecionar o canal:\n"
+            f"```{type(error).__name__}: {error}```"
+        )
+
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+        except Exception:
+            pass
 
 
 
