@@ -1,0 +1,215 @@
+import discord
+
+from datetime import datetime, timezone
+
+from discord.ext import commands
+from discord.ui import View, Select
+
+
+# ==========================================================
+# DADOS DAS CATEGORIAS
+# ==========================================================
+
+CATEGORIAS = {
+
+    "moderacao": {
+        "nome": "🛡️ Moderação",
+        "descricao": "Comandos para manter o servidor organizado e seguro.",
+        "comandos": [
+            ("!ban @usuário [motivo]", "Bane um membro do servidor."),
+            ("!unban <ID> [motivo]", "Desbane um usuário pelo ID."),
+            ("!kick @usuário [motivo]", "Expulsa um membro do servidor."),
+            ("!mute @usuário [motivo]", "Silencia um membro (cargo 🔇 Muted)."),
+            ("!unmute @usuário", "Remove o silenciamento de um membro."),
+            ("!warn @usuário [motivo]", "Aplica uma advertência a um membro."),
+            ("!warns [@usuário]", "Mostra as advertências de um membro."),
+            ("!clear <quantidade>", "Apaga mensagens do canal (padrão: 5)."),
+            ("!lock", "Bloqueia o canal atual para mensagens."),
+            ("!unlock", "Desbloqueia o canal atual."),
+            ("!slowmode <segundos>", "Define o modo lento do canal (0 a 21600s)."),
+            ("!nick @usuário [novo nome]", "Altera o apelido de um membro."),
+        ]
+    },
+
+    "sorteios": {
+        "nome": "🎉 Sorteios",
+        "descricao": "Sistema completo de sorteios com painel interativo.",
+        "comandos": [
+            ("!sorteio", "Abre o painel para configurar e criar um novo sorteio."),
+            ("!sorteios", "Lista todos os sorteios ativos no momento."),
+            ("!sorteio-cancelar <ID>", "Cancela um sorteio que está rolando."),
+            ("!sorteio-reroll <ID>", "Sorteia novo(s) vencedor(es) de um sorteio já finalizado."),
+            ("!sorteio-editar <ID>", "Abre o painel para editar um sorteio ativo."),
+        ]
+    },
+
+    "tickets": {
+        "nome": "🎫 Tickets",
+        "descricao": "Sistema de atendimento por botões (sem comandos de texto).",
+        "comandos": [
+            ("🎫・suporte", "Painel fixo no canal — clique em Dúvidas, Suporte ou Denúncias para abrir um ticket."),
+            ("🟢 Assumir Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
+            ("📢 Chamar Staff", "Botão dentro do ticket — notifica a equipe."),
+            ("👤 Chamar Membro", "Botão dentro do ticket — apenas Staff/Suporte."),
+            ("🔒 Fechar Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
+        ]
+    },
+
+    "verificacao": {
+        "nome": "🔰 Verificação",
+        "descricao": "Sistema de verificação de novos membros por botão (sem comandos de texto).",
+        "comandos": [
+            ("🔓 Verificar", "Botão fixo no canal 🔰・verificacao — libera o acesso ao servidor."),
+        ]
+    },
+
+}
+
+
+# ==========================================================
+# EMBEDS
+# ==========================================================
+
+def embed_geral(bot):
+
+    embed = discord.Embed(
+        title="📖 Central de Ajuda",
+        description=(
+            "Selecione uma categoria no menu abaixo para ver os comandos "
+            "detalhados, ou confira o resumo geral aqui embaixo.\n\n"
+            "Prefixo dos comandos: **`!`**"
+        ),
+        color=discord.Color.blurple(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    for chave, dados in CATEGORIAS.items():
+
+        embed.add_field(
+            name=dados["nome"],
+            value=dados["descricao"],
+            inline=False
+        )
+
+    if bot.user and bot.user.display_avatar:
+        embed.set_thumbnail(url=bot.user.display_avatar.url)
+
+    embed.set_footer(text="Use o menu abaixo para navegar")
+
+    return embed
+
+
+def embed_categoria(chave):
+
+    dados = CATEGORIAS[chave]
+
+    embed = discord.Embed(
+        title=dados["nome"],
+        description=dados["descricao"],
+        color=discord.Color.blurple(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    for comando, explicacao in dados["comandos"]:
+
+        embed.add_field(
+            name=comando,
+            value=explicacao,
+            inline=False
+        )
+
+    embed.set_footer(text="Use o menu abaixo para voltar ou trocar de categoria")
+
+    return embed
+
+
+# ==========================================================
+# VIEW COM MENU DE CATEGORIAS
+# ==========================================================
+
+class AjudaView(View):
+
+    def __init__(self, bot):
+
+        super().__init__(timeout=120)
+
+        self.bot = bot
+
+        self.add_item(SelecionarCategoria(bot))
+
+
+class SelecionarCategoria(Select):
+
+    def __init__(self, bot):
+
+        self.bot = bot
+
+        opcoes = [
+            discord.SelectOption(
+                label="📖 Visão geral",
+                value="geral",
+                description="Resumo de todas as categorias"
+            )
+        ]
+
+        for chave, dados in CATEGORIAS.items():
+
+            opcoes.append(
+                discord.SelectOption(
+                    label=dados["nome"],
+                    value=chave,
+                    description=dados["descricao"][:100]
+                )
+            )
+
+        super().__init__(
+            placeholder="Escolha uma categoria...",
+            options=opcoes,
+            min_values=1,
+            max_values=1
+        )
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        escolha = self.values[0]
+
+        if escolha == "geral":
+            embed = embed_geral(self.bot)
+        else:
+            embed = embed_categoria(escolha)
+
+        await interaction.response.edit_message(embed=embed, view=self.view)
+
+
+# ==========================================================
+# COG
+# ==========================================================
+
+class Ajuda(commands.Cog):
+
+    def __init__(self, bot):
+
+        self.bot = bot
+
+
+    @commands.command(name="help", aliases=["ajuda", "comandos"])
+    async def help_cmd(self, ctx):
+
+        view = AjudaView(self.bot)
+
+        await ctx.send(
+            embed=embed_geral(self.bot),
+            view=view
+        )
+
+
+# ==========================================================
+# SETUP
+# ==========================================================
+
+async def setup(bot):
+
+    await bot.add_cog(
+        Ajuda(bot)
+    )
