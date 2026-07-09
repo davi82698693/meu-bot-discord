@@ -74,70 +74,79 @@ class Verificacao(commands.Cog):
 
 
 
-        for guild in self.bot.guilds:
+    # ==================================
+    # CONFIGURAR SISTEMA MANUALMENTE
+    # ==================================
+
+    @commands.command(name="setup-verificacao")
+    @commands.has_permissions(manage_guild=True)
+    async def setup_verificacao(self, ctx):
+
+        guild = ctx.guild
+
+        criado_algo = False
+
+
+        # ==========================
+        # CARGO
+        # ==========================
+
+        cargo = discord.utils.get(
+
+            guild.roles,
+
+            name=CARGO_VERIFICADO
+
+        )
+
+
+        if cargo is None:
+
+
+            await guild.create_role(
+
+                name=CARGO_VERIFICADO,
+
+                reason="Sistema de verificação"
+
+            )
+
+            criado_algo = True
 
 
 
-            # ==========================
-            # CARGO
-            # ==========================
+
+        # ==========================
+        # CANAL
+        # ==========================
+
+        canal = discord.utils.get(
+
+            guild.text_channels,
+
+            name=CANAL_VERIFICACAO
+
+        )
 
 
-            cargo = discord.utils.get(
+        if canal is None:
 
-                guild.roles,
 
-                name=CARGO_VERIFICADO
+            canal = await guild.create_text_channel(
+
+                CANAL_VERIFICACAO,
+
+                reason="Sistema de verificação"
 
             )
 
 
-            if cargo is None:
 
+            mensagem = embed(
 
-                await guild.create_role(
+                "🔰 Verificação",
 
-                    name=CARGO_VERIFICADO,
-
-                    reason="Sistema de verificação"
-
-                )
-
-
-
-
-            # ==========================
-            # CANAL
-            # ==========================
-
-
-            canal = discord.utils.get(
-
-                guild.text_channels,
-
-                name=CANAL_VERIFICACAO
-
-            )
-
-
-            if canal is None:
-
-
-                canal = await guild.create_text_channel(
-
-                    CANAL_VERIFICACAO,
-
-                    reason="Sistema de verificação"
-
-                )
-
-
-
-                mensagem = embed(
-
-                    "🔰 Verificação",
-
-                    """
+                """
 Bem-vindo ao servidor! 👋
 
 
@@ -150,19 +159,53 @@ Para liberar seu acesso, clique no botão abaixo.
 Clique em **🔓 Verificar** para continuar.
 """,
 
-                    discord.Color.blue()
+                discord.Color.blue()
 
+            )
+
+
+
+            await canal.send(
+
+                embed=mensagem,
+
+                view=BotaoVerificacao()
+
+            )
+
+            criado_algo = True
+
+
+        await ctx.send(
+
+            embed=embed(
+
+                "✅ Setup de Verificação" if criado_algo else "ℹ️ Já configurado",
+
+                "Estrutura de verificação criada/verificada com sucesso."
+                if criado_algo
+                else "Tudo que faltava já existia, nada novo foi criado.",
+
+                discord.Color.green()
+
+            )
+
+        )
+
+
+
+    async def cog_command_error(self, ctx, error):
+
+        if isinstance(error, commands.MissingPermissions):
+            return await ctx.send(
+                embed=embed(
+                    "🚫 Sem Permissão",
+                    "Você não tem permissão para usar esse comando.",
+                    discord.Color.red()
                 )
+            )
 
-
-
-                await canal.send(
-
-                    embed=mensagem,
-
-                    view=BotaoVerificacao()
-
-                )
+        raise error
 
 
 
