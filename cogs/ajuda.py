@@ -12,6 +12,15 @@ from discord.ui import View, Select
 
 CATEGORIAS = {
 
+    "basicos": {
+        "nome": "⚙️ Geral",
+        "descricao": "Comandos básicos do bot.",
+        "comandos": [
+            ("!help", "Mostra esta central de ajuda."),
+            ("!invite", "Gera o link para convidar o bot para outro servidor."),
+        ]
+    },
+
     "moderacao": {
         "nome": "🛡️ Moderação",
         "descricao": "Comandos para manter o servidor organizado e seguro.",
@@ -202,6 +211,48 @@ class Ajuda(commands.Cog):
             embed=embed_geral(self.bot),
             view=view
         )
+
+
+    @commands.command(name="invite", aliases=["convite", "convidar"])
+    async def invite_cmd(self, ctx):
+
+        permissoes = discord.Permissions(
+            view_channel=True,
+            send_messages=True,
+            embed_links=True,
+            attach_files=True,
+            read_message_history=True,
+            add_reactions=True,
+            use_external_emojis=True,
+            manage_messages=True,
+            manage_channels=True,
+            manage_roles=True,
+            manage_nicknames=True,
+            kick_members=True,
+            ban_members=True,
+        )
+
+        link = discord.utils.oauth_url(
+            self.bot.user.id,
+            permissions=permissoes,
+            scopes=("bot", "applications.commands")
+        )
+
+        embed = discord.Embed(
+            title="🔗 Convide o bot para o seu servidor!",
+            description=(
+                f"[**Clique aqui para adicionar o bot**]({link})\n\n"
+                "O link já vem com as permissões necessárias para "
+                "todos os sistemas (moderação, tickets, verificação e sorteios)."
+            ),
+            color=discord.Color.blurple(),
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        if self.bot.user.display_avatar:
+            embed.set_thumbnail(url=self.bot.user.display_avatar.url)
+
+        await ctx.send(embed=embed)
 
 
 # ==========================================================
