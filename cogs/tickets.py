@@ -43,6 +43,38 @@ def criar_embed(
     return embed
 
 
+def criar_embed_painel(guild):
+
+    embed = criar_embed(
+        "🎫 Central de Atendimento",
+        """
+Bem-vindo ao suporte!
+
+Escolha uma opção abaixo:
+
+❓ **Dúvidas**
+Perguntas gerais.
+
+🛠️ **Suporte**
+Ajuda com problemas.
+
+🚨 **Denúncias**
+Relatar usuários ou situações.
+
+Nossa equipe responderá em breve.
+""",
+        discord.Color.blue()
+    )
+
+    if guild.icon:
+
+        embed.set_thumbnail(
+            url=guild.icon.url
+        )
+
+    return embed
+
+
 
 # ==========================================================
 # VERIFICA EQUIPE
@@ -195,39 +227,60 @@ class Tickets(commands.Cog):
                 )
 
 
-                embed = criar_embed(
-                    "🎫 Central de Atendimento",
-                    """
-Bem-vindo ao suporte!
-
-Escolha uma opção abaixo:
-
-❓ **Dúvidas**
-Perguntas gerais.
-
-🛠️ **Suporte**
-Ajuda com problemas.
-
-🚨 **Denúncias**
-Relatar usuários ou situações.
-
-Nossa equipe responderá em breve.
-""",
-                    discord.Color.blue()
-                )
-
-
-                if guild.icon:
-
-                    embed.set_thumbnail(
-                        url=guild.icon.url
-                    )
-
-
                 await painel.send(
-                    embed=embed,
+                    embed=criar_embed_painel(guild),
                     view=PainelTickets()
                 )
+
+
+
+    # ======================================================
+    # REENVIAR / RECRIAR O PAINEL MANUALMENTE
+    # ======================================================
+
+    @commands.command(name="painel-ticket", aliases=["painel-tickets"])
+    @commands.has_permissions(manage_guild=True)
+    async def painel_ticket(self, ctx, canal: discord.TextChannel = None):
+
+        canal_destino = canal or ctx.channel
+
+        await canal_destino.send(
+            embed=criar_embed_painel(ctx.guild),
+            view=PainelTickets()
+        )
+
+        if canal_destino != ctx.channel:
+
+            await ctx.send(
+                embed=criar_embed(
+                    "✅ Painel enviado",
+                    f"O painel de tickets foi enviado em {canal_destino.mention}.",
+                    discord.Color.green()
+                )
+            )
+
+
+    async def cog_command_error(self, ctx, error):
+
+        if isinstance(error, commands.MissingPermissions):
+            return await ctx.send(
+                embed=criar_embed(
+                    "🚫 Sem Permissão",
+                    "Você não tem permissão para usar esse comando.",
+                    discord.Color.red()
+                )
+            )
+
+        if isinstance(error, commands.ChannelNotFound):
+            return await ctx.send(
+                embed=criar_embed(
+                    "❌ Canal não encontrado",
+                    "Não encontrei esse canal. Marque ele (#canal) ou passe o ID certo.",
+                    discord.Color.red()
+                )
+            )
+
+        raise error
 
 
 
