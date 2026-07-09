@@ -1,11 +1,151 @@
 import discord
 import asyncio
+import json
+import os
 import random
+import time
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from discord.ext import commands
-from discord.ui import View, Button, Modal, TextInput, ChannelSelect
+from discord.ui import View, Button, Modal, TextInput, ChannelSelect, RoleSelect
+
+
+# ==========================================================
+# CONFIG / PERSISTÊNCIA
+# ==========================================================
+
+DATA_FILE = os.path.join(os.path.dirname(__file__), "sorteios_data.json")
+LOG_CHANNEL_NAME = "logs-moderação"
+
+
+def carregar_dados():
+
+    if not os.path.exists(DATA_FILE):
+        return {}
+
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"⚠️ Erro ao carregar sorteios_data.json: {e}")
+        return {}
+
+
+def salvar_dados(sorteios):
+
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(sorteios, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ Erro ao salvar sorteios_data.json: {e}")
+
+
+async def enviar_log(bot, guild, texto, cor=discord.Color.blurple()):
+
+    if guild is None:
+        return
+
+    canal_log = discord.utils.get(
+        guild.text_channels,
+        name=LOG_CHANNEL_NAME
+    )
+
+    if canal_log is None:
+        return
+
+    try:
+        await canal_log.send(
+            embed=discord.Embed(
+                description=texto,
+                color=cor,
+                timestamp=datetime.now(timezone.utc)
+            )
+        )
+    except Exception:
+        pass
+
+
+def construir_embed_sorteio(dados):
+
+    cargo_texto = (
+        f"<@&{dados['cargo_id']}>"
+        if dados.get("cargo_id")
+        else "Nenhum"
+    )
+
+    embed = discord.Embed(
+
+        title="🎉 NOVO SORTEIO",
+
+        description=f"""
+
+🎁 **Prêmio**
+
+{dados['premio']}
+
+
+
+🏆 **Vencedores**
+
+{dados['vencedores']}
+
+
+
+📋 **Requisitos**
+
+{dados['requisitos']}
+
+
+
+🔒 **Cargo Obrigatório**
+
+{cargo_texto}
+
+
+
+👥 **Participantes**
+
+{len(dados['participantes'])}
+
+
+
+⏰ **Termina**
+
+<t:{int(dados['termina_em'])}:R>
+
+
+
+Clique no botão abaixo para participar!
+
+""",
+
+        color=discord.Color.gold(),
+
+        timestamp=datetime.now(timezone.utc)
+
+    )
+
+    return embed
+
+
+async def atualizar_mensagem_sorteio(cog, sorteio_id):
+
+    dados = cog.sorteios.get(sorteio_id)
+
+    if dados is None:
+        return
+
+    canal = cog.bot.get_channel(dados.get("canal"))
+
+    if canal is None:
+        return
+
+    try:
+        msg = await canal.fetch_message(dados["mensagem"])
+        await msg.edit(embed=construir_embed_sorteio(dados))
+    except Exception:
+        pass
 
 
 
@@ -19,35 +159,52 @@ class Sorteio(commands.Cog):
 
         self.bot = bot
 
-        self.sorteios = {}
+        self.sorteios = carregar_dados()
+
+        self.tasks = {}
 
 
+    async def cog_load(self):
 
-    def embed(
-        self,
-        titulo,
-        descricao,
-        cor=discord.Color.blurple()
-    ):
+        for sorteio_id, dados in list(self.sorteios.items()):
 
-        embed = discord.Embed(
-            title=titulo,
-            description=descricao,
-            color=cor,
-            timestamp=datetime.utcnow()
-        )
+            if dados.get("status") == "ativo":
 
-        embed.set_footer(
-            text="🎉 Sistema Profissional de Sorteios"
-        )
+                self.bot.add_view(
+                    ParticiparSorteio(sorteio_id)
+                )
 
-        return embed
+                task = asyncio.create_task(
+                    iniciar_contagem(self, sorteio_id)
+                )
+
+                self.tasks[sorteio_id] = task
 
 
+    def salvar(self):
+
+        salvar_dados(self.sorteios)
+
+
+    async def cog_command_error(self, ctx, error):
+
+        if isinstance(error, commands.MissingPermissions):
+            return await ctx.send("❌ Você não tem permissão para usar esse comando.")
+
+        if isinstance(error, commands.MissingRequiredArgument):
+            return await ctx.send(f"❌ Faltou um argumento: `{error.param.name}`.")
+
+        print(f"Erro no comando {ctx.command}: {error}")
+
+        await ctx.send(f"❌ Ocorreu um erro: `{error}`")
+
+
+    # ======================================================
+    # CRIAR SORTEIO (painel)
+    # ======================================================
 
     @commands.command(name="sorteio")
     @commands.has_permissions(manage_guild=True)
-
     async def sorteio(self, ctx):
 
         painel = PainelSorteio(self)
@@ -58,18 +215,186 @@ class Sorteio(commands.Cog):
         )
 
 
+    # ======================================================
+    # LISTAR SORTEIOS ATIVOS
+    # ======================================================
+
+    @commands.command(name="sorteios")
+    @commands.has_permissions(manage_guild=True)
+    async def sorteios_ativos(self, ctx):
+
+        ativos = {
+            sid: d for sid, d in self.sorteios.items()
+            if d.get("status") == "ativo"
+        }
+
+        if not ativos:
+            return await ctx.send(
+                embed=discord.Embed(
+                    description="Nenhum sorteio ativo no momento.",
+                    color=discord.Color.red()
+                )
+            )
+
+        embed = discord.Embed(
+            title="🎉 Sorteios Ativos",
+            color=discord.Color.gold(),
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        for sid, d in ativos.items():
+
+            embed.add_field(
+                name=f"🎁 {d['premio']}  •  ID `{sid}`",
+                value=(
+                    f"📢 <#{d['canal']}>\n"
+                    f"👥 {len(d['participantes'])} participante(s)\n"
+                    f"⏰ termina <t:{int(d['termina_em'])}:R>"
+                ),
+                inline=False
+            )
+
+        await ctx.send(embed=embed)
+
+
+    # ======================================================
+    # CANCELAR SORTEIO
+    # ======================================================
+
+    @commands.command(name="sorteio-cancelar")
+    @commands.has_permissions(manage_guild=True)
+    async def sorteio_cancelar(self, ctx, sorteio_id: str):
+
+        dados = self.sorteios.get(sorteio_id)
+
+        if dados is None or dados.get("status") != "ativo":
+            return await ctx.send("❌ Sorteio não encontrado ou não está ativo.")
+
+        dados["status"] = "cancelado"
+        self.salvar()
+
+        task = self.tasks.pop(sorteio_id, None)
+
+        if task:
+            task.cancel()
+
+        canal = self.bot.get_channel(dados["canal"])
+
+        if canal:
+            try:
+                msg = await canal.fetch_message(dados["mensagem"])
+                await msg.edit(
+                    embed=discord.Embed(
+                        title="🚫 Sorteio Cancelado",
+                        description=f"O sorteio de **{dados['premio']}** foi cancelado.",
+                        color=discord.Color.red()
+                    ),
+                    view=None
+                )
+            except Exception:
+                pass
+
+        await ctx.send(f"✅ Sorteio `{sorteio_id}` cancelado.")
+
+        await enviar_log(
+            self.bot,
+            ctx.guild,
+            f"🚫 Sorteio **{dados['premio']}** (ID `{sorteio_id}`) foi cancelado por {ctx.author.mention}.",
+            discord.Color.red()
+        )
+
+
+    # ======================================================
+    # REROLL (novo sorteio de vencedores)
+    # ======================================================
+
+    @commands.command(name="sorteio-reroll")
+    @commands.has_permissions(manage_guild=True)
+    async def sorteio_reroll(self, ctx, sorteio_id: str):
+
+        dados = self.sorteios.get(sorteio_id)
+
+        if dados is None or dados.get("status") != "finalizado":
+            return await ctx.send("❌ Sorteio não encontrado ou ainda não foi finalizado.")
+
+        participantes = dados.get("participantes", [])
+
+        if not participantes:
+            return await ctx.send("❌ Não há participantes para sortear novamente.")
+
+        quantidade = min(dados["vencedores"], len(participantes))
+
+        novos = random.sample(participantes, quantidade)
+
+        dados["vencedores_sorteados"] = novos
+        self.salvar()
+
+        mencoes = "\n".join(f"<@{u}>" for u in novos)
+
+        canal = self.bot.get_channel(dados["canal"])
+
+        embed = discord.Embed(
+            title="🔁 Reroll — Novo(s) Vencedor(es)!",
+            description=f"🎁 **Prêmio**\n{dados['premio']}\n\n🎉 **Vencedor(es)**\n{mencoes}",
+            color=discord.Color.green(),
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        if canal:
+            await canal.send(embed=embed)
+
+        await ctx.send(f"✅ Reroll feito para o sorteio `{sorteio_id}`.")
+
+        await enviar_log(
+            self.bot,
+            ctx.guild,
+            f"🔁 Reroll no sorteio **{dados['premio']}** (ID `{sorteio_id}`) por {ctx.author.mention}.",
+            discord.Color.blue()
+        )
+
+
+    # ======================================================
+    # EDITAR SORTEIO
+    # ======================================================
+
+    @commands.command(name="sorteio-editar")
+    @commands.has_permissions(manage_guild=True)
+    async def sorteio_editar(self, ctx, sorteio_id: str):
+
+        dados = self.sorteios.get(sorteio_id)
+
+        if dados is None or dados.get("status") != "ativo":
+            return await ctx.send("❌ Sorteio não encontrado ou não está ativo.")
+
+        painel = PainelSorteio(self, sorteio_id=sorteio_id)
+
+        painel.premio = dados["premio"]
+        painel.tempo = dados["tempo"]
+        painel.vencedores = dados["vencedores"]
+        painel.requisitos = dados["requisitos"]
+        painel.cargo_id = dados.get("cargo_id")
+        painel.canal = self.bot.get_channel(dados["canal"])
+
+        await ctx.send(
+            embed=painel.gerar_embed(),
+            view=painel
+        )
+
+
 
 # ==========================================================
-# PAINEL
+# PAINEL (criação e edição)
 # ==========================================================
 
 class PainelSorteio(View):
 
-    def __init__(self, cog):
+    def __init__(self, cog, sorteio_id=None):
 
         super().__init__(timeout=600)
 
         self.cog = cog
+
+        self.sorteio_id = sorteio_id
 
         self.premio = ""
 
@@ -81,23 +406,39 @@ class PainelSorteio(View):
 
         self.requisitos = "Nenhum"
 
+        self.cargo_id = None
+
+        if sorteio_id:
+
+            self.criar_sorteio.label = "💾 Salvar Alterações"
+
+            self.criar_sorteio.style = discord.ButtonStyle.primary
+
+            self.remove_item(self.botao_canal)
+
 
 
     def gerar_embed(self):
 
+        titulo = (
+            "✏️ Editando Sorteio"
+            if self.sorteio_id
+            else "🎉 Configuração do Sorteio"
+        )
+
         embed = discord.Embed(
 
-            title="🎉 Configuração do Sorteio",
+            title=titulo,
 
             description="""
 Configure todas as opções abaixo.
 
-Quando terminar clique em **Criar Sorteio**.
+Quando terminar clique no botão de confirmar.
 """,
 
             color=discord.Color.gold(),
 
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
 
         )
 
@@ -128,6 +469,12 @@ Quando terminar clique em **Criar Sorteio**.
         embed.add_field(
             name="📋 Requisitos",
             value=self.requisitos,
+            inline=False
+        )
+
+        embed.add_field(
+            name="🔒 Cargo Obrigatório",
+            value=f"<@&{self.cargo_id}>" if self.cargo_id else "`Nenhum`",
             inline=False
         )
 
@@ -246,7 +593,34 @@ Quando terminar clique em **Criar Sorteio**.
 
 
     # ======================================================
-    # BOTÃO CRIAR
+    # BOTÃO CARGO OBRIGATÓRIO
+    # ======================================================
+
+    @discord.ui.button(
+        label="🔒 Cargo",
+        style=discord.ButtonStyle.secondary,
+        row=2
+    )
+    async def botao_cargo(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        await interaction.response.send_message(
+
+            "Selecione o cargo obrigatório, ou clique em "
+            "\"Sem restrição\" para não exigir nenhum.",
+
+            view=SelecionarCargo(self),
+
+            ephemeral=True
+
+        )
+
+
+    # ======================================================
+    # BOTÃO CRIAR / SALVAR
     # ======================================================
 
     @discord.ui.button(
@@ -297,17 +671,32 @@ Quando terminar clique em **Criar Sorteio**.
         )
 
 
-        await iniciar_sorteio(
-            self.cog,
-            self,
-            interaction
-        )
+        if self.sorteio_id:
 
+            await salvar_edicao_sorteio(
+                self.cog,
+                self,
+                interaction
+            )
 
-        await interaction.followup.send(
-            "✅ Sorteio criado com sucesso!",
-            ephemeral=True
-        )
+            await interaction.followup.send(
+                "✅ Sorteio atualizado com sucesso!",
+                ephemeral=True
+            )
+
+        else:
+
+            await iniciar_sorteio(
+                self.cog,
+                self,
+                interaction
+            )
+
+            await interaction.followup.send(
+                "✅ Sorteio criado com sucesso!",
+                ephemeral=True
+            )
+
 
     async def on_error(
         self,
@@ -377,6 +766,8 @@ class ModalPremio(Modal):
 
             placeholder="Ex: Nitro, R$50, Cargo VIP...",
 
+            default=painel.premio or None,
+
             max_length=100
 
         )
@@ -427,6 +818,8 @@ class ModalTempo(Modal):
 
             placeholder="Ex: 1h, 30m, 2d",
 
+            default=painel.tempo or None,
+
             max_length=20
 
         )
@@ -476,6 +869,8 @@ class ModalVencedores(Modal):
             label="Número de vencedores",
 
             placeholder="Ex: 1",
+
+            default=str(painel.vencedores),
 
             max_length=3
 
@@ -554,6 +949,8 @@ class ModalRequisitos(Modal):
             placeholder="Ex: Ter cargo membro, estar no servidor há 7 dias...",
 
             style=discord.TextStyle.paragraph,
+
+            default=painel.requisitos or None,
 
             max_length=500
 
@@ -675,7 +1072,109 @@ class SelecionarCanal(View):
 
 
 # ==========================================================
-# BOTÃO PARTICIPAR
+# SELECIONAR CARGO OBRIGATÓRIO
+# ==========================================================
+
+class SelecionarCargo(View):
+
+    def __init__(self, painel):
+
+        super().__init__(
+            timeout=60
+        )
+
+        self.painel = painel
+
+
+    @discord.ui.select(
+        cls=RoleSelect,
+        placeholder="Escolha o cargo obrigatório",
+        min_values=1,
+        max_values=1,
+        row=0
+    )
+    async def selecionar(
+
+        self,
+
+        interaction: discord.Interaction,
+
+        select: RoleSelect
+
+    ):
+
+        cargo = select.values[0]
+
+        self.painel.cargo_id = cargo.id
+
+        await interaction.response.edit_message(
+
+            content=f"✅ Cargo obrigatório definido: {cargo.mention}",
+
+            view=None
+
+        )
+
+
+    @discord.ui.button(
+        label="🔓 Sem restrição de cargo",
+        style=discord.ButtonStyle.secondary,
+        row=1
+    )
+    async def sem_cargo(
+        self,
+        interaction: discord.Interaction,
+        button: Button
+    ):
+
+        self.painel.cargo_id = None
+
+        await interaction.response.edit_message(
+
+            content="✅ Sorteio sem restrição de cargo.",
+
+            view=None
+
+        )
+
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item
+    ):
+        import traceback
+
+        print("========== ERRO NO SelecionarCargo ==========")
+        traceback.print_exception(
+            type(error), error, error.__traceback__
+        )
+        print("===============================================")
+
+        mensagem_erro = (
+            f"❌ Deu erro ao selecionar o cargo:\n"
+            f"```{type(error).__name__}: {error}```"
+        )
+
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+        except Exception:
+            pass
+
+
+
+# ==========================================================
+# BOTÃO PARTICIPAR / SAIR
 # ==========================================================
 
 class ParticiparSorteio(View):
@@ -688,15 +1187,17 @@ class ParticiparSorteio(View):
 
         self.sorteio_id = sorteio_id
 
+        self.participar.custom_id = f"participar_sorteio_{sorteio_id}"
+
+        self.sair.custom_id = f"sair_sorteio_{sorteio_id}"
+
 
 
     @discord.ui.button(
 
         label="🎉 Participar",
 
-        style=discord.ButtonStyle.success,
-
-        custom_id="participar_sorteio"
+        style=discord.ButtonStyle.success
 
     )
 
@@ -733,15 +1234,32 @@ class ParticiparSorteio(View):
         )
 
 
-        if dados is None:
+        if dados is None or dados.get("status") != "ativo":
 
             return await interaction.response.send_message(
 
-                "❌ Esse sorteio não existe mais.",
+                "❌ Esse sorteio não está mais ativo.",
 
                 ephemeral=True
 
             )
+
+
+        cargo_id = dados.get("cargo_id")
+
+        if cargo_id:
+
+            cargo = interaction.guild.get_role(cargo_id)
+
+            if cargo and cargo not in interaction.user.roles:
+
+                return await interaction.response.send_message(
+
+                    f"❌ Você precisa ter o cargo {cargo.mention} para participar.",
+
+                    ephemeral=True
+
+                )
 
 
 
@@ -765,6 +1283,10 @@ class ParticiparSorteio(View):
             usuario
         )
 
+        cog.salvar()
+
+        await atualizar_mensagem_sorteio(cog, self.sorteio_id)
+
 
 
         await interaction.response.send_message(
@@ -774,6 +1296,102 @@ class ParticiparSorteio(View):
             ephemeral=True
 
         )
+
+
+
+    @discord.ui.button(
+
+        label="🚪 Sair",
+
+        style=discord.ButtonStyle.danger
+
+    )
+
+    async def sair(
+
+        self,
+
+        interaction: discord.Interaction,
+
+        button: discord.ui.Button
+
+    ):
+
+        cog = interaction.client.get_cog(
+            "Sorteio"
+        )
+
+        if cog is None:
+
+            return await interaction.response.send_message(
+                "❌ Sistema indisponível.",
+                ephemeral=True
+            )
+
+        dados = cog.sorteios.get(
+            self.sorteio_id
+        )
+
+        if dados is None or dados.get("status") != "ativo":
+
+            return await interaction.response.send_message(
+                "❌ Esse sorteio não está mais ativo.",
+                ephemeral=True
+            )
+
+        usuario = interaction.user.id
+
+        if usuario not in dados["participantes"]:
+
+            return await interaction.response.send_message(
+                "⚠️ Você não está participando desse sorteio.",
+                ephemeral=True
+            )
+
+        dados["participantes"].remove(usuario)
+
+        cog.salvar()
+
+        await atualizar_mensagem_sorteio(cog, self.sorteio_id)
+
+        await interaction.response.send_message(
+            "👋 Você saiu do sorteio.",
+            ephemeral=True
+        )
+
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+        item
+    ):
+        import traceback
+
+        print("========== ERRO NO ParticiparSorteio ==========")
+        traceback.print_exception(
+            type(error), error, error.__traceback__
+        )
+        print("===============================================")
+
+        mensagem_erro = (
+            f"❌ Deu erro:\n"
+            f"```{type(error).__name__}: {error}```"
+        )
+
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    mensagem_erro,
+                    ephemeral=True
+                )
+        except Exception:
+            pass
 
 
 
@@ -800,98 +1418,135 @@ async def iniciar_sorteio(
     )
 
 
+    segundos = converter_tempo(painel.tempo)
+
+    termina_em = time.time() + segundos
+
 
     cog.sorteios[sorteio_id] = {
 
-
         "premio": painel.premio,
-
 
         "tempo": painel.tempo,
 
-
         "vencedores": painel.vencedores,
-
 
         "requisitos": painel.requisitos,
 
+        "cargo_id": painel.cargo_id,
 
-        "participantes": []
+        "participantes": [],
+
+        "termina_em": termina_em,
+
+        "status": "ativo",
+
+        "canal": painel.canal.id,
+
+        "criado_por": interaction.user.id
 
     }
 
 
-
-    embed = discord.Embed(
-
-        title="🎉 NOVO SORTEIO",
-
-        description=f"""
-
-🎁 **Prêmio**
-
-{painel.premio}
-
-
-
-🏆 **Vencedores**
-
-{painel.vencedores}
-
-
-
-📋 **Requisitos**
-
-{painel.requisitos}
-
-
-
-⏰ **Duração**
-
-{painel.tempo}
-
-
-
-Clique no botão abaixo para participar!
-
-""",
-
-        color=discord.Color.gold(),
-
-        timestamp=datetime.utcnow()
-
-    )
-
+    view = ParticiparSorteio(sorteio_id)
 
 
     mensagem = await painel.canal.send(
 
-        embed=embed,
+        embed=construir_embed_sorteio(cog.sorteios[sorteio_id]),
 
-        view=ParticiparSorteio(
-            sorteio_id
-        )
+        view=view
 
     )
 
 
-
     cog.sorteios[sorteio_id]["mensagem"] = mensagem.id
 
-    cog.sorteios[sorteio_id]["canal"] = painel.canal.id
+    cog.salvar()
 
-    asyncio.create_task(
+
+    task = asyncio.create_task(
         iniciar_contagem(
             cog,
             sorteio_id
         )
     )
 
+    cog.tasks[sorteio_id] = task
+
+
+    await enviar_log(
+        cog.bot,
+        painel.canal.guild,
+        f"🎉 Sorteio de **{painel.premio}** criado por {interaction.user.mention} "
+        f"em {painel.canal.mention}. (ID `{sorteio_id}`)"
+    )
+
 
 
 # ==========================================================
-# FINALIZAÇÃO DO SETUP DO CRIAR
+# SALVAR EDIÇÃO DE SORTEIO
 # ==========================================================
+
+async def salvar_edicao_sorteio(
+
+    cog,
+
+    painel,
+
+    interaction
+
+):
+
+    sorteio_id = painel.sorteio_id
+
+    dados = cog.sorteios.get(sorteio_id)
+
+    if dados is None:
+        return
+
+    dados["premio"] = painel.premio
+
+    dados["vencedores"] = painel.vencedores
+
+    dados["requisitos"] = painel.requisitos
+
+    dados["cargo_id"] = painel.cargo_id
+
+
+    if painel.tempo and painel.tempo != dados.get("tempo"):
+
+        segundos = converter_tempo(painel.tempo)
+
+        if segundos:
+
+            dados["tempo"] = painel.tempo
+
+            dados["termina_em"] = time.time() + segundos
+
+            old_task = cog.tasks.pop(sorteio_id, None)
+
+            if old_task:
+                old_task.cancel()
+
+            task = asyncio.create_task(
+                iniciar_contagem(cog, sorteio_id)
+            )
+
+            cog.tasks[sorteio_id] = task
+
+
+    cog.salvar()
+
+    await atualizar_mensagem_sorteio(cog, sorteio_id)
+
+    await enviar_log(
+        cog.bot,
+        interaction.guild,
+        f"✏️ Sorteio **{dados['premio']}** (ID `{sorteio_id}`) foi editado por "
+        f"{interaction.user.mention}.",
+        discord.Color.blue()
+    )
 
 
 
@@ -969,25 +1624,44 @@ async def finalizar_sorteio(
 
     if not participantes:
 
+        dados["status"] = "finalizado"
+
+        dados["vencedores_sorteados"] = []
+
+        cog.salvar()
 
         if canal:
 
-            await canal.send(
+            try:
 
-                embed=discord.Embed(
+                msg = await canal.fetch_message(dados["mensagem"])
 
-                    title="🎉 Sorteio encerrado",
+                await msg.edit(
 
-                    description="Ninguém participou do sorteio.",
+                    embed=discord.Embed(
 
-                    color=discord.Color.red()
+                        title="🎉 Sorteio encerrado",
+
+                        description=f"Ninguém participou do sorteio de **{dados['premio']}**.",
+
+                        color=discord.Color.red()
+
+                    ),
+
+                    view=None
 
                 )
 
-            )
+            except Exception:
 
+                pass
 
-        del cog.sorteios[sorteio_id]
+        await enviar_log(
+            cog.bot,
+            canal.guild if canal else None,
+            f"🎉 Sorteio **{dados['premio']}** (ID `{sorteio_id}`) encerrado sem participantes.",
+            discord.Color.orange()
+        )
 
         return
 
@@ -1012,6 +1686,12 @@ async def finalizar_sorteio(
     )
 
 
+    dados["vencedores_sorteados"] = vencedores
+
+    dados["status"] = "finalizado"
+
+    cog.salvar()
+
 
     mencoes = []
 
@@ -1034,14 +1714,17 @@ async def finalizar_sorteio(
 
     if canal:
 
+        try:
 
-        await canal.send(
+            msg = await canal.fetch_message(dados["mensagem"])
 
-            embed=discord.Embed(
+            await msg.edit(
 
-                title="🏆 Sorteio Finalizado!",
+                embed=discord.Embed(
 
-                description=f"""
+                    title="🏆 Sorteio Finalizado!",
+
+                    description=f"""
 
 🎁 **Prêmio**
 
@@ -1055,17 +1738,35 @@ async def finalizar_sorteio(
 
 """,
 
-                color=discord.Color.green(),
+                    color=discord.Color.green(),
 
-                timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
+
+                ),
+
+                view=None
 
             )
+
+        except Exception:
+
+            pass
+
+
+        await canal.send(
+
+            f"🎉 Parabéns {resultado}! Vocês ganharam **{dados['premio']}**!"
 
         )
 
 
-
-    del cog.sorteios[sorteio_id]
+    await enviar_log(
+        cog.bot,
+        canal.guild if canal else None,
+        f"🏆 Sorteio **{dados['premio']}** (ID `{sorteio_id}`) finalizado. "
+        f"Vencedor(es): {resultado}",
+        discord.Color.green()
+    )
 
 
 
@@ -1081,6 +1782,8 @@ async def iniciar_contagem(
 
 ):
 
+    await cog.bot.wait_until_ready()
+
 
     dados = cog.sorteios.get(
 
@@ -1089,32 +1792,30 @@ async def iniciar_contagem(
     )
 
 
-    if dados is None:
+    if dados is None or dados.get("status") != "ativo":
 
         return
 
 
-
-    segundos = converter_tempo(
-
-        dados["tempo"]
-
-    )
+    restante = dados["termina_em"] - time.time()
 
 
+    if restante > 0:
 
-    if segundos is None:
+        try:
+
+            await asyncio.sleep(restante)
+
+        except asyncio.CancelledError:
+
+            return
+
+
+    dados = cog.sorteios.get(sorteio_id)
+
+    if dados is None or dados.get("status") != "ativo":
 
         return
-
-
-
-    await asyncio.sleep(
-
-        segundos
-
-    )
-
 
 
     await finalizar_sorteio(
@@ -1124,3 +1825,5 @@ async def iniciar_contagem(
         sorteio_id
 
     )
+
+    cog.tasks.pop(sorteio_id, None)
