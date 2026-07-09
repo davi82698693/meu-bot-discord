@@ -57,6 +57,7 @@ CATEGORIAS = {
         "descricao": "Sistema de atendimento por botões (sem comandos de texto).",
         "comandos": [
             ("🎫・suporte", "Painel fixo no canal — clique em Dúvidas, Suporte ou Denúncias para abrir um ticket."),
+            ("!painel-ticket [#canal]", "Reenvia/recria o painel de tickets (no canal atual ou no indicado)."),
             ("🟢 Assumir Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
             ("📢 Chamar Staff", "Botão dentro do ticket — notifica a equipe."),
             ("👤 Chamar Membro", "Botão dentro do ticket — apenas Staff/Suporte."),
