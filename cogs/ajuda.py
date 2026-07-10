@@ -23,14 +23,15 @@ CATEGORIAS = {
 
     "loja": {
         "nome": "🛒 Loja",
-        "descricao": "Sistema de vendas com estoque e aprovação manual (só para donos da loja).",
+        "descricao": "Sistema de vendas com estoque e aprovação manual (só para Administradores).",
         "comandos": [
-            ("!loja-add-produto \"Nome\" \"Preço\" [descrição]", "Cadastra um novo produto."),
-            ("!loja-add-estoque <ID> credencial", "Adiciona uma conta ao estoque (ou anexe um .txt com várias)."),
+            ("!loja-admin", "Abre o painel de administração (botões e formulários — mais fácil que decorar comando)."),
+            ("!loja-painel", "Envia o painel de compras (dropdown) no canal atual."),
+            ("!loja-add-produto \"Nome\" \"Preço\" [descrição]", "(Alternativa por texto) Cadastra um novo produto."),
+            ("!loja-add-estoque <ID> credencial", "(Alternativa por texto) Adiciona uma conta ao estoque."),
             ("!loja-produtos", "Lista todos os produtos e o estoque de cada um."),
             ("!loja-remover-produto <ID>", "Remove um produto da loja."),
-            ("!loja-pix <chave>", "Configura a chave PIX (anexe uma imagem para definir o QR code)."),
-            ("!loja-painel", "Envia o painel de compras (dropdown) no canal atual."),
+            ("!loja-pix <chave>", "(Alternativa por texto) Configura a chave PIX."),
         ]
     },
 
