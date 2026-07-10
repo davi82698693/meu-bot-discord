@@ -31,6 +31,7 @@ CATEGORIAS = {
             ("!loja-add-produto \"Nome\" \"Preço\" [descrição]", "(Alternativa por texto) Cadastra um novo produto."),
             ("!loja-add-estoque <ID> credencial", "(Alternativa por texto) Adiciona uma conta ao estoque."),
             ("!loja-produtos", "Lista todos os produtos e o estoque de cada um."),
+            ("!loja-notas [ID do produto]", "Mostra a média de avaliações (geral ou de um produto específico)."),
             ("!loja-remover-produto <ID>", "Remove um produto da loja."),
             ("!loja-pix <chave>", "(Alternativa por texto) Configura a chave PIX."),
         ]
