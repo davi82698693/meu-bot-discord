@@ -403,6 +403,53 @@ class Loja(commands.Cog):
     # VER NOTAS / AVALIAÇÕES
     # ======================================================
 
+    @commands.command(name="loja-stats")
+    async def loja_stats(self, ctx):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
+            )
+
+        aprovados = [p for p in self.dados["pedidos"].values() if p.get("status") == "aprovado"]
+
+        faturamento = 0.0
+        contagem = {}
+
+        for pedido in aprovados:
+
+            try:
+                valor = float(str(pedido["preco"]).replace(".", "").replace(",", "."))
+            except Exception:
+                valor = 0.0
+
+            faturamento += valor
+
+            nome = pedido["produto_nome"]
+            contagem[nome] = contagem.get(nome, 0) + 1
+
+        top = sorted(contagem.items(), key=lambda x: -x[1])[:5]
+
+        embed = embed_padrao(
+            "📊 Estatísticas da Loja",
+            f"💰 **Faturamento total:** R$ {faturamento:.2f}\n"
+            f"🛒 **Vendas aprovadas:** {len(aprovados)}\n"
+            f"📦 **Produtos cadastrados:** {len(self.dados['produtos'])}",
+            discord.Color.gold()
+        )
+
+        if top:
+
+            texto = "\n".join(
+                f"{i+1}. {nome} — {qtd} venda(s)"
+                for i, (nome, qtd) in enumerate(top)
+            )
+
+            embed.add_field(name="🏆 Mais vendidos", value=texto, inline=False)
+
+        await ctx.send(embed=embed)
+
+
     @commands.command(name="loja-notas")
     async def loja_notas(self, ctx, produto_id: str = None):
 
