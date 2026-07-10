@@ -83,6 +83,25 @@ async def eh_dono(bot, user_id, guild_id=None):
     return membro.guild_permissions.administrator
 
 
+CARGO_APROVADOR = os.getenv("LOJA_CARGO_APROVADOR", "✅Aprovador")
+
+
+async def pode_aprovar(bot, user_id, guild_id=None):
+
+    if user_id in DONO_IDS:
+        return True
+
+    membro = await _obter_membro(bot, user_id, guild_id)
+
+    if membro is None:
+        return False
+
+    return any(
+        cargo.name.lower() == CARGO_APROVADOR.lower()
+        for cargo in membro.roles
+    )
+
+
 async def obter_donos_para_notificar(bot, guild_id):
 
     ids = set(DONO_IDS)
@@ -95,10 +114,14 @@ async def obter_donos_para_notificar(bot, guild_id):
     if guild is None:
         return ids
 
-    for membro in guild.members:
+    cargo = discord.utils.get(guild.roles, name=CARGO_APROVADOR)
 
-        if membro.guild_permissions.administrator and not membro.bot:
-            ids.add(membro.id)
+    if cargo:
+
+        for membro in cargo.members:
+
+            if not membro.bot:
+                ids.add(membro.id)
 
     return ids
 
@@ -330,6 +353,8 @@ class Loja(commands.Cog):
 
         self.salvar()
 
+        await atualizar_todos_paineis(self)
+
         await ctx.send(
             embed=embed_padrao(
                 "✅ Estoque atualizado",
@@ -390,6 +415,8 @@ class Loja(commands.Cog):
             )
 
         self.salvar()
+
+        await atualizar_todos_paineis(self)
 
         await ctx.send(
             embed=embed_padrao("🗑️ Produto removido", f"**{produto['nome']}** foi removido da loja.", discord.Color.orange())
@@ -458,7 +485,53 @@ class Loja(commands.Cog):
 
         embed, view = construir_painel_loja(self)
 
-        await ctx.send(embed=embed, view=view)
+        mensagem = await ctx.send(embed=embed, view=view)
+
+        self.dados["config"].setdefault("paineis", []).append(
+            {"canal_id": mensagem.channel.id, "mensagem_id": mensagem.id}
+        )
+
+        self.salvar()
+
+
+    # ======================================================
+    # EDITAR PAINEL (título/descrição)
+    # ======================================================
+
+    @commands.command(name="editar-painel")
+    async def editar_painel_cmd(self, ctx, *, texto: str = None):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
+            )
+
+        if not texto or "|" not in texto:
+            return await ctx.send(
+                embed=embed_padrao(
+                    "❌ Formato inválido",
+                    "Use assim: `!editar-painel Título | Descrição`\n\n"
+                    "Ou, mais fácil: use `!loja-admin` e clique em **✏️ Editar Painel**.",
+                    discord.Color.red()
+                )
+            )
+
+        titulo, descricao = texto.split("|", 1)
+
+        self.dados["config"]["painel_titulo"] = titulo.strip()
+        self.dados["config"]["painel_descricao"] = descricao.strip()
+
+        self.salvar()
+
+        await atualizar_todos_paineis(self)
+
+        await ctx.send(
+            embed=embed_padrao(
+                "✅ Painel atualizado",
+                "Título e descrição salvos, e todos os painéis já enviados foram atualizados.",
+                discord.Color.green()
+            )
+        )
 
 
     # ======================================================
@@ -488,20 +561,36 @@ class Loja(commands.Cog):
 
 def construir_painel_loja(cog):
 
+    titulo = cog.dados["config"].get("painel_titulo") or "🛒 Loja"
+
+    descricao = cog.dados["config"].get("painel_descricao") or "Escolha abaixo o produto que deseja comprar."
+
     embed = discord.Embed(
-        title="🛒 Loja",
-        description="Escolha abaixo o produto que deseja comprar.",
+        title=titulo,
+        description=descricao,
         color=discord.Color.gold(),
         timestamp=datetime.now(timezone.utc)
     )
 
-    for pid, produto in cog.dados["produtos"].items():
+    produtos_disponiveis = {
+        pid: produto
+        for pid, produto in cog.dados["produtos"].items()
+        if produto["estoque"]
+    }
 
-        status = f"📦 {len(produto['estoque'])} em estoque" if produto["estoque"] else "❌ Esgotado"
+    if not produtos_disponiveis:
+
+        embed.add_field(
+            name="😕 Sem produtos disponíveis no momento",
+            value="Volte mais tarde!",
+            inline=False
+        )
+
+    for pid, produto in produtos_disponiveis.items():
 
         embed.add_field(
             name=f"{produto['nome']} — R$ {produto['preco']}",
-            value=f"{produto['descricao']}\n{status}",
+            value=f"{produto['descricao']}\n📦 {len(produto['estoque'])} em estoque",
             inline=False
         )
 
@@ -509,26 +598,55 @@ def construir_painel_loja(cog):
 
     opcoes = []
 
-    for pid, produto in cog.dados["produtos"].items():
-
-        disponivel = len(produto["estoque"]) > 0
-
-        label = produto["nome"]
-
-        if not disponivel:
-            label = f"🚫 {label} (Esgotado)"
+    for pid, produto in produtos_disponiveis.items():
 
         opcoes.append(
             discord.SelectOption(
-                label=label[:100],
+                label=produto["nome"][:100],
                 value=pid,
                 description=f"Preço: R$ {produto['preco']} | Estoque: {len(produto['estoque'])}"[:100]
             )
         )
 
+    if not opcoes:
+
+        opcoes = [
+            discord.SelectOption(
+                label="Nenhum produto disponível no momento",
+                value="dummy"
+            )
+        ]
+
     view = LojaPainelView(cog, opcoes)
 
     return embed, view
+
+
+async def atualizar_todos_paineis(cog):
+
+    paineis = cog.dados["config"].get("paineis", [])
+
+    ainda_validos = []
+
+    embed, view = construir_painel_loja(cog)
+
+    for painel in paineis:
+
+        canal = cog.bot.get_channel(painel["canal_id"])
+
+        if canal is None:
+            continue
+
+        try:
+            mensagem = await canal.fetch_message(painel["mensagem_id"])
+            await mensagem.edit(embed=embed, view=view)
+            ainda_validos.append(painel)
+        except Exception:
+            continue
+
+    cog.dados["config"]["paineis"] = ainda_validos
+
+    cog.salvar()
 
 
 # ==========================================================
@@ -559,7 +677,8 @@ class LojaSelect(Select):
 
         if produto_id == "dummy":
             return await interaction.response.send_message(
-                "❌ Esse painel está desatualizado. Peça para a equipe reenviar com `!loja-painel`.",
+                "❌ Não há produtos disponíveis no momento (ou esse painel está "
+                "desatualizado — peça pra equipe reenviar).",
                 ephemeral=True
             )
 
@@ -756,7 +875,7 @@ class AprovarView(View):
         if pedido is None:
             return await interaction.response.send_message("❌ Pedido não encontrado.", ephemeral=True)
 
-        autorizado = await eh_dono(
+        autorizado = await pode_aprovar(
             interaction.client,
             interaction.user.id,
             pedido.get("guild_id")
@@ -764,7 +883,7 @@ class AprovarView(View):
 
         if not autorizado:
             return await interaction.response.send_message(
-                "🚫 Você precisa ser Administrador no servidor para aprovar isso.",
+                f"🚫 Você precisa ter o cargo **{CARGO_APROVADOR}** para aprovar isso.",
                 ephemeral=True
             )
 
@@ -830,6 +949,8 @@ class AprovarView(View):
 
         cog.salvar()
 
+        await atualizar_todos_paineis(cog)
+
         await interaction.response.edit_message(
             embed=discord.Embed(
                 title="✅ Pedido aprovado",
@@ -862,7 +983,7 @@ class AprovarView(View):
         if pedido is None:
             return await interaction.response.send_message("❌ Pedido não encontrado.", ephemeral=True)
 
-        autorizado = await eh_dono(
+        autorizado = await pode_aprovar(
             interaction.client,
             interaction.user.id,
             pedido.get("guild_id")
@@ -870,7 +991,7 @@ class AprovarView(View):
 
         if not autorizado:
             return await interaction.response.send_message(
-                "🚫 Você precisa ser Administrador no servidor para recusar isso.",
+                f"🚫 Você precisa ter o cargo **{CARGO_APROVADOR}** para recusar isso.",
                 ephemeral=True
             )
 
@@ -1055,6 +1176,8 @@ class ModalAddEstoque(Modal):
 
         self.cog.salvar()
 
+        await atualizar_todos_paineis(self.cog)
+
         await interaction.response.send_message(
             embed=embed_padrao(
                 "✅ Estoque atualizado",
@@ -1133,6 +1256,54 @@ class ModalPix(Modal):
         except asyncio.TimeoutError:
 
             pass
+
+
+class ModalEditarPainel(Modal):
+
+    def __init__(self, cog):
+
+        super().__init__(title="✏️ Editar Painel da Loja")
+
+        self.cog = cog
+
+        titulo_atual = cog.dados["config"].get("painel_titulo", "🛒 Loja")
+        descricao_atual = cog.dados["config"].get("painel_descricao", "Escolha abaixo o produto que deseja comprar.")
+
+        self.titulo = TextInput(
+            label="Título do painel",
+            default=titulo_atual,
+            max_length=256
+        )
+
+        self.descricao = TextInput(
+            label="Descrição do painel",
+            style=discord.TextStyle.paragraph,
+            default=descricao_atual,
+            max_length=1000
+        )
+
+        self.add_item(self.titulo)
+        self.add_item(self.descricao)
+
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        self.cog.dados["config"]["painel_titulo"] = self.titulo.value
+        self.cog.dados["config"]["painel_descricao"] = self.descricao.value
+
+        self.cog.salvar()
+
+        await atualizar_todos_paineis(self.cog)
+
+        await interaction.response.send_message(
+            embed=embed_padrao(
+                "✅ Painel atualizado",
+                "O título e a descrição foram salvos, e todos os painéis já "
+                "enviados foram atualizados automaticamente.",
+                discord.Color.green()
+            ),
+            ephemeral=True
+        )
 
 
 class PainelAdminView(View):
@@ -1232,11 +1403,26 @@ class PainelAdminView(View):
 
         embed, view = construir_painel_loja(self.cog)
 
-        await interaction.channel.send(embed=embed, view=view)
+        mensagem = await interaction.channel.send(embed=embed, view=view)
+
+        self.cog.dados["config"].setdefault("paineis", []).append(
+            {"canal_id": mensagem.channel.id, "mensagem_id": mensagem.id}
+        )
+
+        self.cog.salvar()
 
         await interaction.response.send_message(
-            "✅ Painel de compras enviado neste canal!",
+            "✅ Painel de compras enviado neste canal! Ele vai se atualizar "
+            "sozinho conforme o estoque mudar.",
             ephemeral=True
+        )
+
+
+    @discord.ui.button(label="✏️ Editar Painel", style=discord.ButtonStyle.secondary, row=1)
+    async def editar_painel(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.send_modal(
+            ModalEditarPainel(self.cog)
         )
 
 
