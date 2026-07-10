@@ -1286,11 +1286,12 @@ class ModalNovoProduto(Modal):
             max_length=20
         )
 
-        self.categoria = TextInput(
-            label="Categoria (define o painel)",
-            placeholder="Ex: robux, contas-blox, netflix",
-            default="geral",
-            max_length=50
+        self.estoque_inicial = TextInput(
+            label="Estoque inicial (opcional, 1 por linha)",
+            style=discord.TextStyle.paragraph,
+            placeholder="usuario1:senha1\nusuario2:senha2",
+            required=False,
+            max_length=1000
         )
 
         self.descricao = TextInput(
@@ -1302,7 +1303,7 @@ class ModalNovoProduto(Modal):
 
         self.add_item(self.nome)
         self.add_item(self.preco)
-        self.add_item(self.categoria)
+        self.add_item(self.estoque_inicial)
         self.add_item(self.descricao)
 
 
@@ -1313,21 +1314,30 @@ class ModalNovoProduto(Modal):
         while produto_id in self.cog.dados["produtos"]:
             produto_id = str(random.randint(1000, 9999))
 
+        linhas = [
+            linha.strip()
+            for linha in self.estoque_inicial.value.splitlines()
+            if linha.strip()
+        ] if self.estoque_inicial.value else []
+
         self.cog.dados["produtos"][produto_id] = {
             "nome": self.nome.value,
             "preco": self.preco.value,
             "descricao": self.descricao.value or "Sem descrição.",
-            "estoque": []
+            "estoque": linhas
         }
 
         self.cog.salvar()
+
+        await atualizar_todos_paineis(self.cog)
 
         await interaction.response.send_message(
             embed=embed_padrao(
                 "✅ Produto criado",
                 f"**{self.nome.value}** — R$ {self.preco.value}\n"
-                f"🆔 ID: `{produto_id}`\n\n"
-                "Agora clique em **📦 Adicionar Estoque** para colocar contas nele.",
+                f"🆔 ID: `{produto_id}`\n"
+                f"📦 Estoque: {len(linhas)}"
+                + ("" if linhas else "\n\nUse **📦 Adicionar Estoque** pra colocar contas nele."),
                 discord.Color.green()
             ),
             ephemeral=True
@@ -1594,6 +1604,21 @@ class SelecionarProdutosPainelView(View):
         self.add_item(SelecionarProdutosPainelSelect(cog))
 
 
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO SelecionarProdutosPainelView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("=============================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
 class PainelAdminView(View):
 
     def __init__(self, cog):
@@ -1621,6 +1646,21 @@ class PainelAdminView(View):
             return False
 
         return True
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO PainelAdminView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("=================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
 
 
     @discord.ui.button(label="➕ Novo Produto", style=discord.ButtonStyle.success, row=0)
