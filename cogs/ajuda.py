@@ -30,6 +30,28 @@ CATEGORIAS = {
         ]
     },
 
+    "jogos": {
+        "nome": "🎮 Jogos & Economia",
+        "descricao": "Sistema de moedas e 10 jogos pra passar o tempo. Todo mundo começa com 500 🪙.",
+        "comandos": [
+            ("!carteira", "Mostra seu saldo de moedas."),
+            ("!diario", "Recompensa diária (200-500 🪙, uma vez a cada 24h)."),
+            ("!pagar @user valor", "Transfere moedas pra outra pessoa."),
+            ("!ranking", "Top 10 mais ricos do servidor."),
+            ("!missao", "Missão de resgate — só libera quando você tem 50 🪙 ou menos."),
+            ("!caracoroa cara/coroa valor", "Cara ou coroa."),
+            ("!dado 1-6 valor", "Acerte o número do dado (paga x6)."),
+            ("!roleta vermelho/preto/verde valor", "Roleta (verde paga x14)."),
+            ("!slots valor", "Caça-níqueis."),
+            ("!blackjack valor", "21 contra o bot, com botões."),
+            ("!forca", "Jogo da forca — digite letras no chat."),
+            ("!adivinhar", "Adivinhe um número de 1 a 100."),
+            ("!ppt pedra/papel/tesoura valor", "Pedra, papel ou tesoura contra o bot."),
+            ("!minerar", "Minere itens aleatórios (cooldown 30min)."),
+            ("!pescar", "Pesque peixes aleatórios (cooldown 20min)."),
+        ]
+    },
+
     "loja": {
         "nome": "🛒 Loja",
         "descricao": "Sistema de vendas com estoque e aprovação manual. Gerenciar produtos exige Administrador; aprovar pedidos exige o cargo **✅Aprovador**.",
