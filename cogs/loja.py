@@ -525,6 +525,85 @@ class Loja(commands.Cog):
 
 
     # ======================================================
+    # VER / REMOVER ITEM ESPECÍFICO DO ESTOQUE
+    # ======================================================
+
+    @commands.command(name="loja-ver-estoque")
+    async def loja_ver_estoque(self, ctx, produto_id: str):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
+            )
+
+        produto = self.dados["produtos"].get(produto_id)
+
+        if produto is None:
+            return await ctx.send(
+                embed=embed_padrao("❌ Produto não encontrado", f"Não existe produto com ID `{produto_id}`.", discord.Color.red())
+            )
+
+        if not produto["estoque"]:
+            return await ctx.send(
+                embed=embed_padrao(f"📦 {produto['nome']}", "Estoque vazio.", discord.Color.orange())
+            )
+
+        linhas = "\n".join(
+            f"`{i+1}.` {item}"
+            for i, item in enumerate(produto["estoque"])
+        )
+
+        await ctx.send(
+            embed=embed_padrao(
+                f"📦 Estoque — {produto['nome']}",
+                f"{linhas}\n\nUse `!loja-remover-estoque {produto_id} <número>` para remover um item específico.",
+                discord.Color.blurple()
+            )
+        )
+
+
+    @commands.command(name="loja-remover-estoque")
+    async def loja_remover_estoque(self, ctx, produto_id: str, posicao: int):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
+            )
+
+        produto = self.dados["produtos"].get(produto_id)
+
+        if produto is None:
+            return await ctx.send(
+                embed=embed_padrao("❌ Produto não encontrado", f"Não existe produto com ID `{produto_id}`.", discord.Color.red())
+            )
+
+        indice = posicao - 1
+
+        if indice < 0 or indice >= len(produto["estoque"]):
+            return await ctx.send(
+                embed=embed_padrao(
+                    "❌ Posição inválida",
+                    f"Use `!loja-ver-estoque {produto_id}` para ver as posições válidas.",
+                    discord.Color.red()
+                )
+            )
+
+        removido = produto["estoque"].pop(indice)
+
+        self.salvar()
+
+        await atualizar_todos_paineis(self)
+
+        await ctx.send(
+            embed=embed_padrao(
+                "🗑️ Item removido do estoque",
+                f"**{produto['nome']}**\n➖ Removido: `{removido}`\n📦 Estoque atual: {len(produto['estoque'])}",
+                discord.Color.orange()
+            )
+        )
+
+
+    # ======================================================
     # CONFIGURAR PIX
     # ======================================================
 
