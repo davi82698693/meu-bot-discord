@@ -130,7 +130,7 @@ async def obter_donos_para_notificar(bot, guild_id):
 def carregar_dados():
 
     if not os.path.exists(DATA_FILE):
-        return {"produtos": {}, "pedidos": {}, "config": {}}
+        return {"produtos": {}, "pedidos": {}, "config": {}, "avaliacoes": []}
 
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -138,10 +138,11 @@ def carregar_dados():
             dados.setdefault("produtos", {})
             dados.setdefault("pedidos", {})
             dados.setdefault("config", {})
+            dados.setdefault("avaliacoes", [])
             return dados
     except Exception as e:
         print(f"⚠️ Erro ao carregar loja_data.json: {e}")
-        return {"produtos": {}, "pedidos": {}, "config": {}}
+        return {"produtos": {}, "pedidos": {}, "config": {}, "avaliacoes": []}
 
 
 def salvar_dados(dados):
@@ -225,6 +226,9 @@ class Loja(commands.Cog):
 
             elif pedido["status"] == "aguardando_aprovacao":
                 self.bot.add_view(AprovarView(pedido_id))
+
+            elif pedido["status"] == "aprovado" and not pedido.get("avaliado"):
+                self.bot.add_view(AvaliarView(pedido_id))
 
 
     def salvar(self):
@@ -391,6 +395,56 @@ class Loja(commands.Cog):
                 value=f"💰 R$ {produto['preco']}\n📦 Estoque: {len(produto['estoque'])}",
                 inline=False
             )
+
+        await ctx.send(embed=embed)
+
+
+    # ======================================================
+    # VER NOTAS / AVALIAÇÕES
+    # ======================================================
+
+    @commands.command(name="loja-notas")
+    async def loja_notas(self, ctx, produto_id: str = None):
+
+        avaliacoes = self.dados.get("avaliacoes", [])
+
+        if produto_id:
+
+            avaliacoes = [a for a in avaliacoes if a["produto_id"] == produto_id]
+
+            produto = self.dados["produtos"].get(produto_id)
+
+            titulo = f"⭐ Avaliações — {produto['nome']}" if produto else f"⭐ Avaliações — ID {produto_id}"
+
+        else:
+
+            titulo = "⭐ Avaliações Gerais da Loja"
+
+        if not avaliacoes:
+            return await ctx.send(
+                embed=embed_padrao(titulo, "Ainda não há avaliações.", discord.Color.orange())
+            )
+
+        media = sum(a["nota"] for a in avaliacoes) / len(avaliacoes)
+
+        embed = embed_padrao(
+            titulo,
+            f"📊 Média: **{media:.1f}/5** ⭐  •  {len(avaliacoes)} avaliação(ões)",
+            discord.Color.gold()
+        )
+
+        for avaliacao in avaliacoes[-10:]:
+
+            estrelas = "⭐" * avaliacao["nota"]
+
+            embed.add_field(
+                name=f"{estrelas}  —  {avaliacao['produto_nome']}",
+                value=avaliacao["comentario"] or "_Sem comentário._",
+                inline=False
+            )
+
+        if len(avaliacoes) > 10:
+            embed.set_footer(text=f"Mostrando as 10 mais recentes de {len(avaliacoes)}.")
 
         await ctx.send(embed=embed)
 
@@ -734,7 +788,8 @@ async def iniciar_compra(cog, interaction: discord.Interaction, produto_id):
         "comprador_id": interaction.user.id,
         "status": "aguardando_pagamento",
         "criado_em": time.time(),
-        "guild_id": interaction.guild.id if interaction.guild else None
+        "guild_id": interaction.guild.id if interaction.guild else None,
+        "avaliado": False
     }
 
     cog.salvar()
@@ -969,6 +1024,23 @@ class AprovarView(View):
             discord.Color.green()
         )
 
+        try:
+
+            await comprador.send(
+                embed=discord.Embed(
+                    title="⭐ Que tal avaliar sua compra?",
+                    description=(
+                        f"Deixe sua nota e comentário sobre **{pedido['produto_nome']}**. "
+                        "Isso ajuda muito a equipe e outros clientes!"
+                    ),
+                    color=discord.Color.gold()
+                ),
+                view=AvaliarView(self.pedido_id)
+            )
+
+        except Exception:
+            pass
+
 
     @discord.ui.button(label="❌ Recusar", style=discord.ButtonStyle.danger)
     async def recusar(self, interaction: discord.Interaction, button: Button):
@@ -1032,6 +1104,160 @@ class AprovarView(View):
             ),
             view=None
         )
+
+
+
+# ==========================================================
+# SISTEMA DE AVALIAÇÕES
+# ==========================================================
+
+CANAL_AVALIACOES_NOMES = ["avaliações", "avaliacoes", "⭐・avaliações", "⭐・avaliacoes"]
+
+
+async def postar_avaliacao(bot, guild_id, avaliacao):
+
+    if guild_id is None:
+        return
+
+    guild = bot.get_guild(guild_id)
+
+    if guild is None:
+        return
+
+    canal = None
+
+    for nome in CANAL_AVALIACOES_NOMES:
+
+        canal = discord.utils.get(guild.text_channels, name=nome)
+
+        if canal:
+            break
+
+    if canal is None:
+        return
+
+    estrelas = "⭐" * avaliacao["nota"] + "☆" * (5 - avaliacao["nota"])
+
+    embed = discord.Embed(
+        title=f"{estrelas}",
+        description=(
+            f"🎁 **Produto:** {avaliacao['produto_nome']}\n"
+            f"👤 **Cliente:** <@{avaliacao['comprador_id']}>\n\n"
+            f"💬 {avaliacao['comentario'] or '_Sem comentário._'}"
+        ),
+        color=discord.Color.gold(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    try:
+        await canal.send(embed=embed)
+    except Exception:
+        pass
+
+
+class ModalAvaliacao(Modal):
+
+    def __init__(self, pedido_id):
+
+        super().__init__(title="⭐ Avaliar Compra")
+
+        self.pedido_id = pedido_id
+
+        self.nota = TextInput(
+            label="Nota (1 a 5)",
+            placeholder="Ex: 5",
+            max_length=1
+        )
+
+        self.comentario = TextInput(
+            label="Comentário (opcional)",
+            style=discord.TextStyle.paragraph,
+            required=False,
+            max_length=500
+        )
+
+        self.add_item(self.nota)
+        self.add_item(self.comentario)
+
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        cog = interaction.client.get_cog("Loja")
+
+        if cog is None:
+            return await interaction.response.send_message("❌ Sistema indisponível.", ephemeral=True)
+
+        pedido = cog.dados["pedidos"].get(self.pedido_id)
+
+        if pedido is None:
+            return await interaction.response.send_message("❌ Pedido não encontrado.", ephemeral=True)
+
+        if pedido.get("avaliado"):
+            return await interaction.response.send_message("⚠️ Você já avaliou essa compra.", ephemeral=True)
+
+        try:
+            nota = int(self.nota.value.strip())
+            if nota < 1 or nota > 5:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message(
+                "❌ A nota precisa ser um número de 1 a 5.",
+                ephemeral=True
+            )
+
+        avaliacao = {
+            "pedido_id": self.pedido_id,
+            "produto_id": pedido["produto_id"],
+            "produto_nome": pedido["produto_nome"],
+            "comprador_id": pedido["comprador_id"],
+            "nota": nota,
+            "comentario": self.comentario.value.strip(),
+            "criado_em": time.time()
+        }
+
+        cog.dados["avaliacoes"].append(avaliacao)
+        pedido["avaliado"] = True
+        cog.salvar()
+
+        await postar_avaliacao(interaction.client, pedido.get("guild_id"), avaliacao)
+
+        await interaction.response.send_message(
+            "✅ Obrigado pela avaliação!",
+            ephemeral=True
+        )
+
+
+class AvaliarView(View):
+
+    def __init__(self, pedido_id):
+
+        super().__init__(timeout=None)
+
+        self.pedido_id = pedido_id
+
+        self.avaliar.custom_id = f"loja_avaliar_{pedido_id}"
+
+
+    @discord.ui.button(label="⭐ Avaliar compra", style=discord.ButtonStyle.primary)
+    async def avaliar(self, interaction: discord.Interaction, button: Button):
+
+        cog = interaction.client.get_cog("Loja")
+
+        if cog is None:
+            return await interaction.response.send_message("❌ Sistema indisponível.", ephemeral=True)
+
+        pedido = cog.dados["pedidos"].get(self.pedido_id)
+
+        if pedido is None:
+            return await interaction.response.send_message("❌ Pedido não encontrado.", ephemeral=True)
+
+        if pedido["comprador_id"] != interaction.user.id:
+            return await interaction.response.send_message("❌ Esse pedido não é seu.", ephemeral=True)
+
+        if pedido.get("avaliado"):
+            return await interaction.response.send_message("⚠️ Você já avaliou essa compra.", ephemeral=True)
+
+        await interaction.response.send_modal(ModalAvaliacao(self.pedido_id))
 
 
 
