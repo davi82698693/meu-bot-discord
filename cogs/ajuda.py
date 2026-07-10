@@ -23,10 +23,11 @@ CATEGORIAS = {
 
     "loja": {
         "nome": "🛒 Loja",
-        "descricao": "Sistema de vendas com estoque e aprovação manual (só para Administradores).",
+        "descricao": "Sistema de vendas com estoque e aprovação manual. Gerenciar produtos exige Administrador; aprovar pedidos exige o cargo **✅Aprovador**.",
         "comandos": [
             ("!loja-admin", "Abre o painel de administração (botões e formulários — mais fácil que decorar comando)."),
-            ("!loja-painel", "Envia o painel de compras (dropdown) no canal atual."),
+            ("!loja-painel", "Envia o painel de compras (dropdown) no canal atual. Some sozinho o que estiver esgotado."),
+            ("!editar-painel Título | Descrição", "Muda o texto do painel de compras (atualiza os já enviados)."),
             ("!loja-add-produto \"Nome\" \"Preço\" [descrição]", "(Alternativa por texto) Cadastra um novo produto."),
             ("!loja-add-estoque <ID> credencial", "(Alternativa por texto) Adiciona uma conta ao estoque."),
             ("!loja-produtos", "Lista todos os produtos e o estoque de cada um."),
