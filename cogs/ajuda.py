@@ -21,6 +21,15 @@ CATEGORIAS = {
         ]
     },
 
+    "antispam": {
+        "nome": "🚫 Anti-spam",
+        "descricao": "Proteção automática contra flood de mensagens (Administrador).",
+        "comandos": [
+            ("!ativarantispam", "Liga a proteção automática contra spam neste servidor."),
+            ("!desativarantispam", "Desliga a proteção automática contra spam neste servidor."),
+        ]
+    },
+
     "loja": {
         "nome": "🛒 Loja",
         "descricao": "Sistema de vendas com estoque e aprovação manual. Gerenciar produtos exige Administrador; aprovar pedidos exige o cargo **✅Aprovador**.",
@@ -33,6 +42,9 @@ CATEGORIAS = {
             ("!loja-produtos", "Lista todos os produtos e o estoque de cada um."),
             ("!loja-notas [ID do produto]", "Mostra a média de avaliações (geral ou de um produto específico)."),
             ("!loja-remover-produto <ID>", "Remove um produto da loja."),
+            ("!loja-ver-estoque <ID>", "Lista os itens do estoque de um produto (numerados)."),
+            ("!loja-remover-estoque <ID> <número>", "Remove um item específico do estoque."),
+            ("!loja-stats", "Mostra faturamento total e produtos mais vendidos."),
             ("!loja-pix <chave>", "(Alternativa por texto) Configura a chave PIX."),
         ]
     },
