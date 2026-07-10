@@ -537,15 +537,15 @@ class Loja(commands.Cog):
                 embed=embed_padrao("❌ Sem produtos", "Cadastre pelo menos um produto antes de enviar o painel.", discord.Color.red())
             )
 
-        embed, view = construir_painel_loja(self)
-
-        mensagem = await ctx.send(embed=embed, view=view)
-
-        self.dados["config"].setdefault("paineis", []).append(
-            {"canal_id": mensagem.channel.id, "mensagem_id": mensagem.id}
+        await ctx.send(
+            embed=embed_padrao(
+                "🛠️ Novo painel neste canal",
+                "Escolha abaixo quais produtos vão aparecer **neste painel**. "
+                "Você pode montar painéis diferentes com produtos diferentes em cada canal.",
+                discord.Color.blurple()
+            ),
+            view=SelecionarProdutosPainelView(self)
         )
-
-        self.salvar()
 
 
     # ======================================================
@@ -613,7 +613,7 @@ class Loja(commands.Cog):
 # CONSTRUIR EMBED + VIEW DO PAINEL DE COMPRAS
 # ==========================================================
 
-def construir_painel_loja(cog):
+def construir_painel_loja(cog, produtos_ids=None):
 
     titulo = cog.dados["config"].get("painel_titulo") or "🛒 Loja"
 
@@ -630,6 +630,7 @@ def construir_painel_loja(cog):
         pid: produto
         for pid, produto in cog.dados["produtos"].items()
         if produto["estoque"]
+        and (produtos_ids is None or pid in produtos_ids)
     }
 
     if not produtos_disponiveis:
@@ -682,14 +683,14 @@ async def atualizar_todos_paineis(cog):
 
     ainda_validos = []
 
-    embed, view = construir_painel_loja(cog)
-
     for painel in paineis:
 
         canal = cog.bot.get_channel(painel["canal_id"])
 
         if canal is None:
             continue
+
+        embed, view = construir_painel_loja(cog, painel.get("produtos"))
 
         try:
             mensagem = await canal.fetch_message(painel["mensagem_id"])
@@ -1285,6 +1286,13 @@ class ModalNovoProduto(Modal):
             max_length=20
         )
 
+        self.categoria = TextInput(
+            label="Categoria (define o painel)",
+            placeholder="Ex: robux, contas-blox, netflix",
+            default="geral",
+            max_length=50
+        )
+
         self.descricao = TextInput(
             label="Descrição (opcional)",
             style=discord.TextStyle.paragraph,
@@ -1294,6 +1302,7 @@ class ModalNovoProduto(Modal):
 
         self.add_item(self.nome)
         self.add_item(self.preco)
+        self.add_item(self.categoria)
         self.add_item(self.descricao)
 
 
@@ -1532,6 +1541,59 @@ class ModalEditarPainel(Modal):
         )
 
 
+class SelecionarProdutosPainelSelect(Select):
+
+    def __init__(self, cog):
+
+        self.cog = cog
+
+        opcoes = [
+            discord.SelectOption(
+                label=produto["nome"][:100],
+                value=pid,
+                description=f"R$ {produto['preco']} | Estoque: {len(produto['estoque'])}"[:100]
+            )
+            for pid, produto in list(cog.dados["produtos"].items())[:25]
+        ]
+
+        super().__init__(
+            placeholder="Escolha os produtos deste painel",
+            options=opcoes,
+            min_values=1,
+            max_values=len(opcoes)
+        )
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        produtos_ids = self.values
+
+        embed, view = construir_painel_loja(self.cog, produtos_ids)
+
+        mensagem = await interaction.channel.send(embed=embed, view=view)
+
+        self.cog.dados["config"].setdefault("paineis", []).append(
+            {"canal_id": mensagem.channel.id, "mensagem_id": mensagem.id, "produtos": produtos_ids}
+        )
+
+        self.cog.salvar()
+
+        await interaction.response.edit_message(
+            content=f"✅ Painel criado com {len(produtos_ids)} produto(s)! Ele se atualiza sozinho.",
+            embed=None,
+            view=None
+        )
+
+
+class SelecionarProdutosPainelView(View):
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=180)
+
+        self.add_item(SelecionarProdutosPainelSelect(cog))
+
+
 class PainelAdminView(View):
 
     def __init__(self, cog):
@@ -1627,19 +1689,9 @@ class PainelAdminView(View):
                 ephemeral=True
             )
 
-        embed, view = construir_painel_loja(self.cog)
-
-        mensagem = await interaction.channel.send(embed=embed, view=view)
-
-        self.cog.dados["config"].setdefault("paineis", []).append(
-            {"canal_id": mensagem.channel.id, "mensagem_id": mensagem.id}
-        )
-
-        self.cog.salvar()
-
         await interaction.response.send_message(
-            "✅ Painel de compras enviado neste canal! Ele vai se atualizar "
-            "sozinho conforme o estoque mudar.",
+            "Escolha os produtos deste painel:",
+            view=SelecionarProdutosPainelView(self.cog),
             ephemeral=True
         )
 
