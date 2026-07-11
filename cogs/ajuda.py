@@ -30,6 +30,14 @@ CATEGORIAS = {
         ]
     },
 
+    "logs": {
+        "nome": "📋 Logs",
+        "descricao": "Configure pra onde cada tipo de log vai (moderação, tickets, loja, etc).",
+        "comandos": [
+            ("!logs-painel", "Abre o painel: escolha a categoria e depois o canal de destino."),
+        ]
+    },
+
     "sugestoes": {
         "nome": "💡 Sugestões",
         "descricao": "Membros sugerem ideias, votam com reação, e staff aprova/recusa.",
@@ -117,6 +125,7 @@ CATEGORIAS = {
             ("!unmute @usuário", "Remove o silenciamento de um membro."),
             ("!warn @usuário [motivo]", "Aplica uma advertência a um membro."),
             ("!warns [@usuário]", "Mostra as advertências de um membro."),
+            ("!delwarn @usuário <número>", "Remove uma advertência específica (veja o número com !warns)."),
             ("!clear <quantidade>", "Apaga mensagens do canal (padrão: 5)."),
             ("!lock", "Bloqueia o canal atual para mensagens."),
             ("!unlock", "Desbloqueia o canal atual."),
@@ -351,4 +360,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Ajuda(bot)
-    )
+)
