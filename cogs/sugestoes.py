@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from discord.ext import commands
 from discord.ui import View, Button, Modal, TextInput
 
+from .logs import obter_canal_log
+
 
 DATA_DIR = (
     os.getenv("SUGESTOES_DATA_DIR")
@@ -224,16 +226,26 @@ class ModalSugestao(Modal):
             ephemeral=True
         )
 
-        canal_staff = interaction.guild.get_channel(canal.id)
+        canal_staff = obter_canal_log(interaction.client, interaction.guild, "sugestoes")
 
-        try:
-            await mensagem.reply(
-                embed=embed_padrao("🛡️ Aguardando análise da staff", "Um administrador vai avaliar essa sugestão.", discord.Color.blurple()),
-                view=VotoStaffView(self.cog, sid),
-                mention_author=False
-            )
-        except Exception:
-            pass
+        if canal_staff is None:
+
+            for c in interaction.guild.text_channels:
+                if "staff" in c.name.lower() or "-staf" in c.name.lower():
+                    canal_staff = c
+                    break
+
+        if canal_staff:
+
+            try:
+                await canal_staff.send(
+                    embed=montar_embed_sugestao(sugestao).add_field(
+                        name="🔗 Sugestão original", value=f"[Clique aqui]({mensagem.jump_url})", inline=False
+                    ),
+                    view=VotoStaffView(self.cog, sid)
+                )
+            except Exception:
+                pass
 
 
 class PainelSugerirView(View):
@@ -327,3 +339,4 @@ class VotoStaffView(View):
     async def recusar(self, interaction: discord.Interaction, button: Button):
 
         await self._finalizar(interaction, "recusada", "❌ Recusada", discord.Color.red())
+        
