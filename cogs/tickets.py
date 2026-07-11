@@ -7,6 +7,8 @@ from datetime import datetime
 from discord.ext import commands
 from discord.ui import View
 
+from .logs import obter_canal_log
+
 DATA_DIR = (
     os.getenv("TICKETS_DATA_DIR")
     or os.getenv("SORTEIO_DATA_DIR")
@@ -373,10 +375,14 @@ class Tickets(commands.Cog):
         embed
     ):
 
-        canal = discord.utils.get(
-            guild.text_channels,
-            name=CANAL_LOGS
-        )
+        canal = obter_canal_log(self.bot, guild, "tickets")
+
+        if canal is None:
+
+            canal = discord.utils.get(
+                guild.text_channels,
+                name=CANAL_LOGS
+            )
 
 
         if canal:
@@ -1029,5 +1035,4 @@ async def setup(bot):
 
         Tickets(bot)
 
-)
-    
+            )
