@@ -237,8 +237,54 @@ class ModalSugestao(Modal):
                 view=VotoStaffView(self.cog, sid)
             )
 
+        except discord.Forbidden:
+
+            print(f"⚠️ SEM PERMISSÃO para criar tópico privado (sugestão {sid}). Faltam as permissões 'Criar Tópicos Privados' / 'Enviar Mensagens em Tópicos' pro bot nesse canal.")
+
+            await avisar_falha_topico(interaction, sugestao)
+
         except Exception as e:
             print(f"⚠️ Não consegui criar o tópico privado da sugestão {sid}: {e}")
+            await avisar_falha_topico(interaction, sugestao)
+
+
+async def avisar_falha_topico(interaction, sugestao):
+    """
+    Plano B: se não der pra criar o tópico privado (geralmente falta de
+    permissão), manda o card de aprovação num canal alternativo e avisa
+    quem configurou, pra corrigir a permissão do bot.
+    """
+
+    canal_alternativo = None
+
+    for c in interaction.guild.text_channels:
+        nome = c.name.lower()
+        if "staff" in nome or "-staf" in nome or "logs" in nome:
+            canal_alternativo = c
+            break
+
+    if canal_alternativo is None:
+        canal_alternativo = interaction.channel
+
+    try:
+
+        await canal_alternativo.send(
+            embed=embed_padrao(
+                "⚠️ Tópico privado não pôde ser criado",
+                "O bot não tem permissão de **Criar Tópicos Privados** / **Enviar Mensagens em Tópicos** "
+                "nesse canal. Dando essa permissão pro cargo do bot nas configurações do servidor, "
+                "isso passa a funcionar direitinho. Por enquanto, aprove por aqui:",
+                discord.Color.orange()
+            )
+        )
+
+        await canal_alternativo.send(
+            embed=montar_embed_sugestao(sugestao),
+            view=VotoStaffView(interaction.client.get_cog("Sugestoes"), sugestao["id"])
+        )
+
+    except Exception as e:
+        print(f"⚠️ Plano B também falhou: {e}")
 
 
 class PainelSugerirView(View):
@@ -338,3 +384,4 @@ class VotoStaffView(View):
     async def recusar(self, interaction: discord.Interaction, button: Button):
 
         await self._finalizar(interaction, "recusada", "❌ Recusada", discord.Color.red())
+    
