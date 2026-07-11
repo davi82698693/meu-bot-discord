@@ -182,7 +182,7 @@ class CargosSelect(Select):
 
     async def callback(self, interaction: discord.Interaction):
 
-        if len(self.options) == 1 and self.options[0].value == "dummy":
+        if not self.values or "dummy" in self.values:
             return await interaction.response.send_message(
                 "❌ Nenhum cargo configurado ainda, ou esse painel está desatualizado.",
                 ephemeral=True
@@ -430,3 +430,4 @@ class PainelAdminCargosView(View):
         )
 
         await interaction.response.send_message("✅ Painel enviado neste canal!", ephemeral=True)
+        
