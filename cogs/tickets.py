@@ -1,9 +1,39 @@
 import discord
 import asyncio
+import os
+import json
 
 from datetime import datetime
 from discord.ext import commands
 from discord.ui import View
+
+DATA_DIR = (
+    os.getenv("TICKETS_DATA_DIR")
+    or os.getenv("SORTEIO_DATA_DIR")
+    or os.path.dirname(__file__)
+)
+
+os.makedirs(DATA_DIR, exist_ok=True)
+
+TICKETS_FILE = os.path.join(DATA_DIR, "tickets_abertos.json")
+
+
+def carregar_tickets_abertos():
+    if not os.path.exists(TICKETS_FILE):
+        return {}
+    try:
+        with open(TICKETS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def salvar_tickets_abertos(dados):
+    try:
+        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ Erro ao salvar tickets_abertos.json: {e}")
 
 
 # ==========================================================
@@ -128,6 +158,24 @@ class Tickets(commands.Cog):
         self.bot.add_view(
             PainelTickets()
         )
+
+        abertos = carregar_tickets_abertos()
+
+        ainda_validos = {}
+
+        for canal_id, dono_id in abertos.items():
+
+            canal = self.bot.get_channel(int(canal_id))
+
+            if canal is None:
+                continue
+
+            self.bot.add_view(BotoesTicket(dono_id))
+
+            ainda_validos[canal_id] = dono_id
+
+        if ainda_validos != abertos:
+            salvar_tickets_abertos(ainda_validos)
 
 
     # ======================================================
@@ -618,10 +666,14 @@ A equipe responderá assim que possível.
         embed=embed,
 
         view=BotoesTicket(
-            membro
+            membro.id
         )
 
     )
+
+    abertos = carregar_tickets_abertos()
+    abertos[str(canal.id)] = membro.id
+    salvar_tickets_abertos(abertos)
 
 
 
@@ -676,13 +728,18 @@ A equipe responderá assim que possível.
 
 class BotoesTicket(View):
 
-    def __init__(self, dono):
+    def __init__(self, dono_id):
 
         super().__init__(
             timeout=None
         )
 
-        self.dono = dono
+        self.dono_id = dono_id
+
+        self.assumir.custom_id = f"assumir_ticket_{dono_id}"
+        self.chamar_staff.custom_id = f"chamar_staff_{dono_id}"
+        self.chamar_membro.custom_id = f"chamar_membro_{dono_id}"
+        self.fechar.custom_id = f"fechar_ticket_{dono_id}"
 
 
 
@@ -692,8 +749,7 @@ class BotoesTicket(View):
 
     @discord.ui.button(
         label="🟢 Assumir Ticket",
-        style=discord.ButtonStyle.success,
-        custom_id="assumir_ticket"
+        style=discord.ButtonStyle.success
     )
     async def assumir(
         self,
@@ -754,8 +810,7 @@ Este ticket foi assumido por:
 
     @discord.ui.button(
         label="📢 Chamar Staff",
-        style=discord.ButtonStyle.primary,
-        custom_id="chamar_staff"
+        style=discord.ButtonStyle.primary
     )
     async def chamar_staff(
         self,
@@ -807,8 +862,7 @@ Este ticket foi assumido por:
 
     @discord.ui.button(
         label="👤 Chamar Membro",
-        style=discord.ButtonStyle.secondary,
-        custom_id="chamar_membro"
+        style=discord.ButtonStyle.secondary
     )
     async def chamar_membro(
         self,
@@ -839,7 +893,7 @@ Este ticket foi assumido por:
 
         await interaction.channel.send(
 
-            f"👤 {self.dono.mention}, a equipe solicitou sua presença."
+            f"👤 <@{self.dono_id}>, a equipe solicitou sua presença."
 
         )
 
@@ -869,8 +923,7 @@ Este ticket foi assumido por:
 
     @discord.ui.button(
         label="🔒 Fechar Ticket",
-        style=discord.ButtonStyle.danger,
-        custom_id="fechar_ticket"
+        style=discord.ButtonStyle.danger
     )
     async def fechar(
         self,
@@ -954,7 +1007,9 @@ Este ticket foi assumido por:
 
         await asyncio.sleep(5)
 
-
+        abertos = carregar_tickets_abertos()
+        abertos.pop(str(interaction.channel.id), None)
+        salvar_tickets_abertos(abertos)
 
         await interaction.channel.delete()
 
