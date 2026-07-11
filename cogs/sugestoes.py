@@ -205,16 +205,13 @@ class ModalSugestao(Modal):
 
         canal = encontrar_canal_sugestoes(interaction.guild) or interaction.channel
 
-        mensagem = await canal.send(embed=montar_embed_sugestao(sugestao))
-
         sugestao["canal_id"] = canal.id
-        sugestao["mensagem_id"] = mensagem.id
 
         self.cog.dados["sugestoes"][sid] = sugestao
         self.cog.salvar()
 
         await interaction.response.send_message(
-            embed=embed_padrao("✅ Sugestão enviada!", f"Sua sugestão foi postada em {canal.mention}.", discord.Color.green()),
+            embed=embed_padrao("✅ Sugestão enviada!", "A equipe vai analisar em breve.", discord.Color.green()),
             ephemeral=True
         )
 
@@ -230,10 +227,29 @@ class ModalSugestao(Modal):
             sugestao["thread_id"] = topico.id
             self.cog.salvar()
 
+            mencoes = []
+
+            for membro in interaction.guild.members:
+
+                if membro.bot:
+                    continue
+
+                if membro.guild_permissions.administrator:
+
+                    try:
+                        await topico.add_user(membro)
+                        mencoes.append(membro.mention)
+                    except Exception:
+                        pass
+
+            if mencoes:
+                conteudo = " ".join(mencoes) + "\n📬 Nova sugestão aguardando análise!"
+            else:
+                conteudo = "📬 Nova sugestão aguardando análise! (nenhum Administrador encontrado pra marcar)"
+
             await topico.send(
-                embed=montar_embed_sugestao(sugestao).add_field(
-                    name="🔗 Mensagem pública", value=f"[Clique aqui]({mensagem.jump_url})", inline=False
-                ),
+                content=conteudo,
+                embed=montar_embed_sugestao(sugestao),
                 view=VotoStaffView(self.cog, sid)
             )
 
@@ -346,16 +362,6 @@ class VotoStaffView(View):
         sugestao["status"] = novo_status
         self.cog.salvar()
 
-        canal = interaction.guild.get_channel(sugestao["canal_id"])
-
-        if canal:
-
-            try:
-                msg_original = await canal.fetch_message(sugestao["mensagem_id"])
-                await msg_original.edit(embed=montar_embed_sugestao(sugestao, status_texto, cor))
-            except Exception:
-                pass
-
         await interaction.response.edit_message(
             embed=embed_padrao(f"{status_texto}", f"Sugestão `{self.sid}` avaliada por {interaction.user.mention}.", cor),
             view=None
@@ -384,4 +390,4 @@ class VotoStaffView(View):
     async def recusar(self, interaction: discord.Interaction, button: Button):
 
         await self._finalizar(interaction, "recusada", "❌ Recusada", discord.Color.red())
-    
+        
