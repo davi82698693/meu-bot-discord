@@ -30,6 +30,15 @@ CATEGORIAS = {
         ]
     },
 
+    "sugestoes": {
+        "nome": "💡 Sugestões",
+        "descricao": "Membros sugerem ideias, votam com reação, e staff aprova/recusa.",
+        "comandos": [
+            ("!sugestoes-painel", "Envia o painel com o botão de sugerir neste canal."),
+            ("!sugestoes-lista", "Lista as sugestões ainda pendentes de avaliação."),
+        ]
+    },
+
     "cargos": {
         "nome": "🎭 Cargos Automáticos",
         "descricao": "Membros escolhem sozinhos os próprios cargos, sem precisar de staff.",
