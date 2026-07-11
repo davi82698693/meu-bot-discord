@@ -30,6 +30,14 @@ CATEGORIAS = {
         ]
     },
 
+    "cargos": {
+        "nome": "🎭 Cargos Automáticos",
+        "descricao": "Membros escolhem sozinhos os próprios cargos, sem precisar de staff.",
+        "comandos": [
+            ("!cargos-admin", "Painel de administração: adicionar/remover cargos e enviar o painel público."),
+        ]
+    },
+
     "boasvindas": {
         "nome": "👋 Boas-vindas",
         "descricao": "Mensagens de entrada/saída com visual pronto. Configuração 100% por painel.",
