@@ -288,3 +288,4 @@ class PainelLogsView(View):
                 await interaction.response.send_message(msg, ephemeral=True)
         except Exception:
             pass
+        
