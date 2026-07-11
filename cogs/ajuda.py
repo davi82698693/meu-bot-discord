@@ -30,6 +30,14 @@ CATEGORIAS = {
         ]
     },
 
+    "boasvindas": {
+        "nome": "👋 Boas-vindas",
+        "descricao": "Mensagens de entrada/saída com visual pronto. Configuração 100% por painel.",
+        "comandos": [
+            ("!boasvindas-painel", "Abre o painel: escolha os canais, ative/desative e teste o visual."),
+        ]
+    },
+
     "niveis": {
         "nome": "📈 Níveis",
         "descricao": "Ganhe XP conversando e suba de nível. Level up dá bônus de moedas se a Loja/Jogos estiver ativa.",
