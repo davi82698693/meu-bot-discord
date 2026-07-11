@@ -339,4 +339,4 @@ class VotoStaffView(View):
     async def recusar(self, interaction: discord.Interaction, button: Button):
 
         await self._finalizar(interaction, "recusada", "❌ Recusada", discord.Color.red())
-        
+                      
