@@ -327,6 +327,10 @@ class Ajuda(commands.Cog):
             manage_nicknames=True,
             kick_members=True,
             ban_members=True,
+            create_private_threads=True,
+            create_public_threads=True,
+            send_messages_in_threads=True,
+            manage_threads=True,
         )
 
         link = discord.utils.oauth_url(
