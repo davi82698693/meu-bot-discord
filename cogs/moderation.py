@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 from datetime import datetime
 
+from .logs import obter_canal_log
+
 
 class Moderation(commands.Cog):
 
@@ -150,10 +152,14 @@ class Moderation(commands.Cog):
         embed
     ):
 
-        canal = discord.utils.get(
-            guild.text_channels,
-            name="📋・logs-moderação"
-        )
+        canal = obter_canal_log(self.bot, guild, "moderacao")
+
+        if canal is None:
+
+            canal = discord.utils.get(
+                guild.text_channels,
+                name="📋・logs-moderação"
+            )
 
 
         if canal:
@@ -1034,5 +1040,5 @@ async def setup(bot):
 
     await bot.add_cog(
         Moderation(bot)
-        )
-            
+            )
+        
