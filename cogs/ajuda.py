@@ -30,6 +30,15 @@ CATEGORIAS = {
         ]
     },
 
+    "niveis": {
+        "nome": "📈 Níveis",
+        "descricao": "Ganhe XP conversando e suba de nível. Level up dá bônus de moedas se a Loja/Jogos estiver ativa.",
+        "comandos": [
+            ("!rank [@user]", "Mostra seu nível, XP e barra de progresso."),
+            ("!levels", "Ranking dos 10 com maior nível do servidor."),
+        ]
+    },
+
     "jogos": {
         "nome": "🎮 Jogos & Economia",
         "descricao": "Sistema de moedas e 10 jogos pra passar o tempo. Todo mundo começa com 500 🪙.",
