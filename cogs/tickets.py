@@ -507,20 +507,24 @@ async def criar_ticket(
 
 
     # ----------------------------------
-    # PEGAR CATEGORIA
+    # PEGAR CATEGORIA (mesma do canal do painel)
     # ----------------------------------
 
-    categoria = discord.utils.get(
-        guild.categories,
-        name=CATEGORIA_TICKETS
-    )
+    categoria = interaction.channel.category
+
+    if categoria is None:
+
+        categoria = discord.utils.get(
+            guild.categories,
+            name=CATEGORIA_TICKETS
+        )
 
 
     if categoria is None:
 
         return await interaction.response.send_message(
 
-            "❌ Categoria de tickets não encontrada.",
+            "❌ Não consegui identificar uma categoria pra criar o ticket.",
 
             ephemeral=True
         )
@@ -1025,4 +1029,5 @@ async def setup(bot):
 
         Tickets(bot)
 
-    )
+)
+    
