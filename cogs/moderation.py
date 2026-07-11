@@ -657,6 +657,76 @@ class Moderation(commands.Cog):
 
 
     # ==================================
+    # RETIRAR WARN
+    # ==================================
+
+    @commands.command(name="delwarn", aliases=["removerwarn"])
+    @commands.has_permissions(manage_messages=True)
+    async def delwarn(
+        self,
+        ctx,
+        member: discord.Member = None,
+        numero: int = None
+    ):
+
+        if member is None or numero is None:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Use assim: `!delwarn @usuário <número>`\nVeja os números com `!warns @usuário`."
+                )
+            )
+
+
+        lista = self.warnings.get(member.id, [])
+
+
+        if not lista or numero < 1 or numero > len(lista):
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    f"Não existe o warn número {numero} para {member.mention}."
+                )
+            )
+
+
+        removido = lista.pop(numero - 1)
+
+
+        embed = self.embed(
+            "🗑️ Warn Removido",
+            f"""
+👤 **Usuário:**
+{member.mention}
+
+📝 **Motivo removido:**
+{removido['motivo']}
+
+🛡️ **Responsável:**
+{ctx.author.mention}
+
+📌 **Warns restantes:**
+{len(lista)}
+""",
+            discord.Color.green()
+        )
+
+
+        await ctx.send(
+            embed=embed
+        )
+
+
+        await self.enviar_log(
+            ctx.guild,
+            embed
+        )
+
+
+
+    # ==================================
     # LIMPAR CHAT
     # ==================================
 
@@ -964,4 +1034,5 @@ async def setup(bot):
 
     await bot.add_cog(
         Moderation(bot)
-    )
+        )
+            
