@@ -8,8 +8,6 @@ from datetime import datetime, timezone
 from discord.ext import commands
 from discord.ui import View, Button, Modal, TextInput
 
-from .logs import obter_canal_log
-
 
 DATA_DIR = (
     os.getenv("SUGESTOES_DATA_DIR")
@@ -75,7 +73,7 @@ def encontrar_canal_sugestoes(guild):
     return None
 
 
-def montar_embed_sugestao(sugestao, status="🕐 Em votação", cor=discord.Color.gold()):
+def montar_embed_sugestao(sugestao, status="🕐 Em análise", cor=discord.Color.gold()):
 
     embed = discord.Embed(
         title=f"💡 {sugestao['titulo']}",
@@ -209,12 +207,6 @@ class ModalSugestao(Modal):
 
         mensagem = await canal.send(embed=montar_embed_sugestao(sugestao))
 
-        try:
-            await mensagem.add_reaction("👍")
-            await mensagem.add_reaction("👎")
-        except Exception:
-            pass
-
         sugestao["canal_id"] = canal.id
         sugestao["mensagem_id"] = mensagem.id
 
@@ -226,26 +218,27 @@ class ModalSugestao(Modal):
             ephemeral=True
         )
 
-        canal_staff = obter_canal_log(interaction.client, interaction.guild, "sugestoes")
+        try:
 
-        if canal_staff is None:
+            topico = await canal.create_thread(
+                name=f"💡 Sugestão #{sid}",
+                type=discord.ChannelType.private_thread,
+                auto_archive_duration=1440,
+                reason="Análise de sugestão (apenas Administradores)"
+            )
 
-            for c in interaction.guild.text_channels:
-                if "staff" in c.name.lower() or "-staf" in c.name.lower():
-                    canal_staff = c
-                    break
+            sugestao["thread_id"] = topico.id
+            self.cog.salvar()
 
-        if canal_staff:
+            await topico.send(
+                embed=montar_embed_sugestao(sugestao).add_field(
+                    name="🔗 Mensagem pública", value=f"[Clique aqui]({mensagem.jump_url})", inline=False
+                ),
+                view=VotoStaffView(self.cog, sid)
+            )
 
-            try:
-                await canal_staff.send(
-                    embed=montar_embed_sugestao(sugestao).add_field(
-                        name="🔗 Sugestão original", value=f"[Clique aqui]({mensagem.jump_url})", inline=False
-                    ),
-                    view=VotoStaffView(self.cog, sid)
-                )
-            except Exception:
-                pass
+        except Exception as e:
+            print(f"⚠️ Não consegui criar o tópico privado da sugestão {sid}: {e}")
 
 
 class PainelSugerirView(View):
@@ -328,6 +321,12 @@ class VotoStaffView(View):
         except Exception:
             pass
 
+        try:
+            if isinstance(interaction.channel, discord.Thread):
+                await interaction.channel.edit(archived=True, locked=True)
+        except Exception:
+            pass
+
 
     @discord.ui.button(label="✅ Aprovar", style=discord.ButtonStyle.success)
     async def aprovar(self, interaction: discord.Interaction, button: Button):
@@ -339,4 +338,3 @@ class VotoStaffView(View):
     async def recusar(self, interaction: discord.Interaction, button: Button):
 
         await self._finalizar(interaction, "recusada", "❌ Recusada", discord.Color.red())
-                      
