@@ -6,6 +6,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from discord.ext import commands
 
+from .logs import obter_canal_log
+
 
 LIMITE_MENSAGENS = int(os.getenv("ANTISPAM_LIMITE", "5"))
 JANELA_SEGUNDOS = int(os.getenv("ANTISPAM_JANELA", "5"))
@@ -172,7 +174,10 @@ class Antispam(commands.Cog):
         except Exception:
             pass
 
-        canal_log = discord.utils.get(message.guild.text_channels, name=LOG_CHANNEL_NAME)
+        canal_log = obter_canal_log(self.bot, message.guild, "antispam")
+
+        if canal_log is None:
+            canal_log = discord.utils.get(message.guild.text_channels, name=LOG_CHANNEL_NAME)
 
         if canal_log:
 
@@ -198,3 +203,4 @@ async def setup(bot):
     await bot.add_cog(
         Antispam(bot)
     )
+    
