@@ -107,6 +107,7 @@ CATEGORIAS = {
         "descricao": "Sistema de vendas com estoque e aprovação manual. Gerenciar produtos exige Administrador; aprovar pedidos exige o cargo **✅Aprovador**.",
         "comandos": [
             ("!loja-admin", "Abre o painel de administração (botões e formulários — mais fácil que decorar comando)."),
+            ("!loja-modelos", "Modelos de painel salvos: enviar, editar produtos, renomear ou excluir."),
             ("!loja-painel", "Envia o painel de compras (dropdown) no canal atual. Some sozinho o que estiver esgotado."),
             ("!editar-painel Título | Descrição", "Muda o texto do painel de compras (atualiza os já enviados)."),
             ("!loja-add-produto \"Nome\" \"Preço\" [descrição]", "(Alternativa por texto) Cadastra um novo produto."),

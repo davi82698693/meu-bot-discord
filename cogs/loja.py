@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime, timezone
 
 from discord.ext import commands
-from discord.ui import View, Select, Button, Modal, TextInput
+from discord.ui import View, Select, Button, Modal, TextInput, RoleSelect
 
 from .logs import obter_canal_log
 
@@ -680,6 +680,32 @@ class Loja(commands.Cog):
         )
 
 
+    @commands.command(name="loja-modelos")
+    async def loja_modelos(self, ctx):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
+            )
+
+        modelos = self.dados["config"].get("modelos", {})
+
+        embed = embed_padrao(
+            "📁 Modelos de Painel",
+            "Modelos salvos que você pode reenviar ou editar a qualquer momento, sem montar do zero.",
+            discord.Color.blurple()
+        )
+
+        if modelos:
+            texto = "\n".join(f"• **{m['nome']}** — {len(m['produtos'])} produto(s)" for m in modelos.values())
+        else:
+            texto = "_Nenhum modelo salvo ainda._"
+
+        embed.add_field(name="Modelos salvos", value=texto, inline=False)
+
+        await ctx.send(embed=embed, view=ModelosView(self))
+
+
     # ======================================================
     # EDITAR PAINEL (título/descrição)
     # ======================================================
@@ -1210,6 +1236,20 @@ class AprovarView(View):
             f"✅ Pedido `{self.pedido_id}` aprovado — **{pedido['produto_nome']}** entregue para <@{comprador_id}>.",
             discord.Color.green()
         )
+
+        cargo_cliente_id = cog.dados["config"].get("cargo_cliente")
+
+        if cargo_cliente_id and guild:
+
+            cargo_cliente = guild.get_role(cargo_cliente_id)
+
+            if cargo_cliente:
+
+                try:
+                    membro_comprador = guild.get_member(comprador_id) or await guild.fetch_member(comprador_id)
+                    await membro_comprador.add_roles(cargo_cliente, reason="Compra aprovada na loja")
+                except Exception as e:
+                    print(f"⚠️ Não consegui dar o cargo de cliente pra {comprador_id}: {e}")
 
         try:
 
@@ -1805,6 +1845,373 @@ class SelecionarProdutosPainelView(View):
             pass
 
 
+class SelecionarCargoCliente(RoleSelect):
+
+    def __init__(self, cog):
+
+        self.cog = cog
+
+        super().__init__(placeholder="Escolha o cargo de cliente")
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        cargo = self.values[0]
+
+        if cargo.managed:
+            return await interaction.response.send_message(
+                "❌ Esse cargo é gerenciado automaticamente (bot/integração/boost) e não pode ser usado.",
+                ephemeral=True
+            )
+
+        self.cog.dados["config"]["cargo_cliente"] = cargo.id
+        self.cog.salvar()
+
+        await interaction.response.edit_message(
+            content=f"✅ Cargo de cliente definido: {cargo.mention}. Quem comprar a partir de agora recebe ele.",
+            view=None
+        )
+
+
+class SelecionarCargoClienteView(View):
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=120)
+
+        self.add_item(SelecionarCargoCliente(cog))
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO SelecionarCargoClienteView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("============================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
+# ==========================================================
+# MODELOS DE PAINEL (salvos, reutilizáveis)
+# ==========================================================
+
+class ModalNomeModelo(Modal):
+
+    def __init__(self, cog, modelo_id=None):
+
+        titulo = "✏️ Renomear Modelo" if modelo_id else "📁 Novo Modelo de Painel"
+
+        super().__init__(title=titulo)
+
+        self.cog = cog
+        self.modelo_id = modelo_id
+
+        nome_atual = None
+
+        if modelo_id:
+            modelo = cog.dados["config"].get("modelos", {}).get(modelo_id)
+            nome_atual = modelo["nome"] if modelo else None
+
+        self.nome = TextInput(
+            label="Nome do modelo",
+            placeholder="Ex: Painel Robux, Painel Contas Blox...",
+            default=nome_atual,
+            max_length=100
+        )
+
+        self.add_item(self.nome)
+
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        modelos = self.cog.dados["config"].setdefault("modelos", {})
+
+        if self.modelo_id:
+
+            if self.modelo_id in modelos:
+                modelos[self.modelo_id]["nome"] = self.nome.value
+                self.cog.salvar()
+
+            await interaction.response.send_message(
+                embed=embed_padrao("✅ Renomeado", f"Modelo agora se chama **{self.nome.value}**.", discord.Color.green()),
+                ephemeral=True
+            )
+
+        else:
+
+            await interaction.response.send_message(
+                f"Nome definido: **{self.nome.value}**. Agora escolha os produtos desse modelo:",
+                view=SelecionarProdutosModeloView(self.cog, self.nome.value),
+                ephemeral=True
+            )
+
+
+class SelecionarProdutosModeloSelect(Select):
+
+    def __init__(self, cog, nome_modelo, modelo_id=None, produtos_atuais=None):
+
+        self.cog = cog
+        self.nome_modelo = nome_modelo
+        self.modelo_id = modelo_id
+
+        produtos_atuais = produtos_atuais or []
+
+        opcoes = [
+            discord.SelectOption(
+                label=produto["nome"][:100],
+                value=pid,
+                description=f"R$ {produto['preco']}"[:100],
+                default=(pid in produtos_atuais)
+            )
+            for pid, produto in list(cog.dados["produtos"].items())[:25]
+        ]
+
+        super().__init__(
+            placeholder="Escolha os produtos deste modelo",
+            options=opcoes,
+            min_values=1,
+            max_values=len(opcoes)
+        )
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        modelos = self.cog.dados["config"].setdefault("modelos", {})
+
+        if self.modelo_id:
+
+            if self.modelo_id in modelos:
+                modelos[self.modelo_id]["produtos"] = list(self.values)
+                self.cog.salvar()
+
+            await interaction.response.edit_message(
+                content=f"✅ Modelo **{self.nome_modelo}** atualizado com {len(self.values)} produto(s).",
+                view=None
+            )
+
+        else:
+
+            modelo_id = str(random.randint(100, 999))
+
+            while modelo_id in modelos:
+                modelo_id = str(random.randint(100, 999))
+
+            modelos[modelo_id] = {"nome": self.nome_modelo, "produtos": list(self.values)}
+
+            self.cog.salvar()
+
+            await interaction.response.edit_message(
+                content=f"✅ Modelo **{self.nome_modelo}** criado com {len(self.values)} produto(s)!",
+                view=None
+            )
+
+
+class SelecionarProdutosModeloView(View):
+
+    def __init__(self, cog, nome_modelo, modelo_id=None, produtos_atuais=None):
+
+        super().__init__(timeout=180)
+
+        self.add_item(SelecionarProdutosModeloSelect(cog, nome_modelo, modelo_id, produtos_atuais))
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO SelecionarProdutosModeloView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("===============================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
+class AcoesModeloView(View):
+
+    def __init__(self, cog, modelo_id):
+
+        super().__init__(timeout=180)
+
+        self.cog = cog
+        self.modelo_id = modelo_id
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO AcoesModeloView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("=================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
+    @discord.ui.button(label="📤 Enviar Aqui", style=discord.ButtonStyle.success, row=0)
+    async def enviar(self, interaction: discord.Interaction, button: Button):
+
+        modelo = self.cog.dados["config"].get("modelos", {}).get(self.modelo_id)
+
+        if modelo is None:
+            return await interaction.response.send_message("❌ Modelo não encontrado (pode ter sido excluído).", ephemeral=True)
+
+        embed, view = construir_painel_loja(self.cog, modelo["produtos"])
+
+        mensagem = await interaction.channel.send(embed=embed, view=view)
+
+        self.cog.dados["config"].setdefault("paineis", []).append(
+            {"canal_id": mensagem.channel.id, "mensagem_id": mensagem.id, "produtos": modelo["produtos"]}
+        )
+
+        self.cog.salvar()
+
+        await interaction.response.edit_message(
+            content=f"✅ Modelo **{modelo['nome']}** enviado neste canal! Ele se atualiza sozinho.",
+            embed=None,
+            view=None
+        )
+
+
+    @discord.ui.button(label="✏️ Editar Produtos", style=discord.ButtonStyle.primary, row=0)
+    async def editar_produtos(self, interaction: discord.Interaction, button: Button):
+
+        modelo = self.cog.dados["config"].get("modelos", {}).get(self.modelo_id)
+
+        if modelo is None:
+            return await interaction.response.send_message("❌ Modelo não encontrado (pode ter sido excluído).", ephemeral=True)
+
+        await interaction.response.edit_message(
+            content=f"Editando produtos de **{modelo['nome']}** (os já marcados já fazem parte do modelo):",
+            view=SelecionarProdutosModeloView(self.cog, modelo["nome"], self.modelo_id, modelo["produtos"])
+        )
+
+
+    @discord.ui.button(label="✏️ Renomear", style=discord.ButtonStyle.secondary, row=1)
+    async def renomear(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.send_modal(
+            ModalNomeModelo(self.cog, self.modelo_id)
+        )
+
+
+    @discord.ui.button(label="🗑️ Excluir Modelo", style=discord.ButtonStyle.danger, row=1)
+    async def excluir(self, interaction: discord.Interaction, button: Button):
+
+        modelos = self.cog.dados["config"].get("modelos", {})
+
+        modelo = modelos.pop(self.modelo_id, None)
+
+        self.cog.salvar()
+
+        if modelo:
+            await interaction.response.edit_message(content=f"🗑️ Modelo **{modelo['nome']}** excluído.", embed=None, view=None)
+        else:
+            await interaction.response.edit_message(content="❌ Esse modelo já tinha sido excluído.", embed=None, view=None)
+
+
+class SelecionarModeloSelect(Select):
+
+    def __init__(self, cog):
+
+        self.cog = cog
+
+        modelos = cog.dados["config"].get("modelos", {})
+
+        opcoes = [
+            discord.SelectOption(
+                label=modelo["nome"][:100],
+                value=mid,
+                description=f"{len(modelo['produtos'])} produto(s)"
+            )
+            for mid, modelo in modelos.items()
+        ][:25]
+
+        if not opcoes:
+            opcoes = [discord.SelectOption(label="Nenhum modelo salvo ainda", value="dummy")]
+
+        super().__init__(placeholder="📂 Escolha um modelo salvo", options=opcoes, row=0)
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        if self.values[0] == "dummy":
+            return await interaction.response.send_message("❌ Nenhum modelo salvo ainda. Crie um primeiro.", ephemeral=True)
+
+        modelo_id = self.values[0]
+
+        modelo = self.cog.dados["config"].get("modelos", {}).get(modelo_id)
+
+        if modelo is None:
+            return await interaction.response.send_message("❌ Modelo não encontrado (pode ter sido excluído).", ephemeral=True)
+
+        await interaction.response.send_message(
+            embed=embed_padrao(
+                f"📁 {modelo['nome']}",
+                f"📦 {len(modelo['produtos'])} produto(s) configurado(s).\nO que deseja fazer?",
+                discord.Color.blurple()
+            ),
+            view=AcoesModeloView(self.cog, modelo_id),
+            ephemeral=True
+        )
+
+
+class ModelosView(View):
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=300)
+
+        self.cog = cog
+
+        self.add_item(SelecionarModeloSelect(cog))
+
+
+    async def interaction_check(self, interaction: discord.Interaction):
+
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
+            return False
+
+        return True
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO ModelosView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("=============================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
+    @discord.ui.button(label="➕ Criar Modelo", style=discord.ButtonStyle.success, row=1)
+    async def criar(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.send_modal(
+            ModalNomeModelo(self.cog)
+        )
+
+
 class PainelAdminView(View):
 
     def __init__(self, cog):
@@ -1967,6 +2374,37 @@ class PainelAdminView(View):
                 embed=embed_padrao("⏳ Tempo esgotado", "Nenhuma imagem recebida.", discord.Color.orange()),
                 ephemeral=True
             )
+
+
+    @discord.ui.button(label="🏷️ Cargo de Cliente", style=discord.ButtonStyle.secondary, row=2)
+    async def definir_cargo_cliente(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.send_message(
+            "Escolha o cargo que quem comprar vai receber automaticamente:",
+            view=SelecionarCargoClienteView(self.cog),
+            ephemeral=True
+        )
+
+
+    @discord.ui.button(label="📁 Modelos de Painel", style=discord.ButtonStyle.primary, row=3)
+    async def modelos(self, interaction: discord.Interaction, button: Button):
+
+        modelos = self.cog.dados["config"].get("modelos", {})
+
+        embed = embed_padrao(
+            "📁 Modelos de Painel",
+            "Modelos salvos que você pode reenviar ou editar a qualquer momento, sem montar do zero.",
+            discord.Color.blurple()
+        )
+
+        if modelos:
+            texto = "\n".join(f"• **{m['nome']}** — {len(m['produtos'])} produto(s)" for m in modelos.values())
+        else:
+            texto = "_Nenhum modelo salvo ainda._"
+
+        embed.add_field(name="Modelos salvos", value=texto, inline=False)
+
+        await interaction.response.send_message(embed=embed, view=ModelosView(self.cog), ephemeral=True)
 
 
 
