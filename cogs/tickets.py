@@ -459,6 +459,21 @@ class PainelTickets(View):
         )
 
 
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO PainelTickets ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("===============================================")
+        msg = f"❌ Deu erro ao criar o ticket:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
 
 # ==========================================================
 # CRIAÇÃO DO TICKET
@@ -1024,6 +1039,21 @@ Este ticket foi assumido por:
         await interaction.channel.delete()
 
 
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO BotoesTicket ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("==============================================")
+        msg = f"❌ Deu erro nesse botão:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
+
 
 # ==========================================================
 # SETUP DO COG
@@ -1035,4 +1065,4 @@ async def setup(bot):
 
         Tickets(bot)
 
-            )
+    )

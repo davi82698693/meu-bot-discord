@@ -47,6 +47,14 @@ CATEGORIAS = {
         ]
     },
 
+    "autorole": {
+        "nome": "🏷️ Cargo Automático",
+        "descricao": "Todo novo membro recebe cargo(s) automaticamente ao entrar.",
+        "comandos": [
+            ("!autorole-painel", "Escolhe quais cargos são dados automaticamente e ativa/desativa."),
+        ]
+    },
+
     "cargos": {
         "nome": "🎭 Cargos Automáticos",
         "descricao": "Membros escolhem sozinhos os próprios cargos, sem precisar de staff.",
@@ -364,4 +372,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Ajuda(bot)
-)
+    )
