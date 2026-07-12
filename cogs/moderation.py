@@ -788,7 +788,10 @@ class Moderation(commands.Cog):
 
         await ctx.channel.set_permissions(
             ctx.guild.default_role,
-            send_messages=False
+            send_messages=False,
+            send_messages_in_threads=False,
+            create_public_threads=False,
+            create_private_threads=False
         )
 
 
@@ -801,7 +804,7 @@ class Moderation(commands.Cog):
 🛡️ **Responsável:**
 {ctx.author.mention}
 
-O canal foi bloqueado.
+O canal foi bloqueado (mensagens e tópicos).
 """,
             discord.Color.red()
         )
@@ -833,7 +836,10 @@ O canal foi bloqueado.
 
         await ctx.channel.set_permissions(
             ctx.guild.default_role,
-            send_messages=True
+            send_messages=True,
+            send_messages_in_threads=True,
+            create_public_threads=True,
+            create_private_threads=True
         )
 
 
@@ -846,7 +852,7 @@ O canal foi bloqueado.
 🛡️ **Responsável:**
 {ctx.author.mention}
 
-O canal foi desbloqueado.
+O canal foi desbloqueado (mensagens e tópicos).
 """,
             discord.Color.green()
         )
@@ -1040,5 +1046,4 @@ async def setup(bot):
 
     await bot.add_cog(
         Moderation(bot)
-        )
-            
+    )
