@@ -21,6 +21,11 @@ async def on_ready():
     print("==============================")
     print(f"Bot online: {bot.user}")
     print("==============================")
+    try:
+        sincronizados = await bot.tree.sync()
+        print(f"🔄 {len(sincronizados)} comandos slash (/) sincronizados.")
+    except Exception as e:
+        print(f"⚠️ Erro ao sincronizar comandos slash: {e}")
     await bot.change_presence(
         activity=discord.Game(
             name="Servidor Profissional 🚀"
