@@ -1,1 +1,2 @@
-Remover arquivo errado
+async def setup(bot):
+    pass
