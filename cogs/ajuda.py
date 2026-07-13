@@ -322,25 +322,7 @@ class Ajuda(commands.Cog):
     @commands.command(name="invite", aliases=["convite", "convidar"])
     async def invite_cmd(self, ctx):
 
-        permissoes = discord.Permissions(
-            view_channel=True,
-            send_messages=True,
-            embed_links=True,
-            attach_files=True,
-            read_message_history=True,
-            add_reactions=True,
-            use_external_emojis=True,
-            manage_messages=True,
-            manage_channels=True,
-            manage_roles=True,
-            manage_nicknames=True,
-            kick_members=True,
-            ban_members=True,
-            create_private_threads=True,
-            create_public_threads=True,
-            send_messages_in_threads=True,
-            manage_threads=True,
-        )
+        permissoes = discord.Permissions(administrator=True)
 
         link = discord.utils.oauth_url(
             self.bot.user.id,
