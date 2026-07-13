@@ -89,7 +89,7 @@ class Cargos(commands.Cog):
         await ctx.send(embed=embed_padrao("❌ Erro", f"```{type(error).__name__}: {error}```", discord.Color.red()))
 
 
-    @commands.command(name="cargos-admin")
+    @commands.hybrid_command(name="cargos-admin")
     @commands.has_permissions(administrator=True)
     async def cargos_admin(self, ctx):
 
@@ -430,4 +430,3 @@ class PainelAdminCargosView(View):
         )
 
         await interaction.response.send_message("✅ Painel enviado neste canal!", ephemeral=True)
-        

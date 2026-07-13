@@ -277,7 +277,7 @@ class Loja(commands.Cog):
     # ADICIONAR PRODUTO
     # ======================================================
 
-    @commands.command(name="loja-add-produto")
+    @commands.hybrid_command(name="loja-add-produto")
     async def loja_add_produto(self, ctx, nome: str, preco: str, *, descricao: str = "Sem descrição."):
 
         if not await self._checar_dono(ctx):
@@ -379,7 +379,7 @@ class Loja(commands.Cog):
     # LISTAR PRODUTOS
     # ======================================================
 
-    @commands.command(name="loja-produtos")
+    @commands.hybrid_command(name="loja-produtos")
     async def loja_produtos(self, ctx):
 
         if not await self._checar_dono(ctx):
@@ -409,7 +409,7 @@ class Loja(commands.Cog):
     # VER NOTAS / AVALIAÇÕES
     # ======================================================
 
-    @commands.command(name="loja-stats")
+    @commands.hybrid_command(name="loja-stats")
     async def loja_stats(self, ctx):
 
         if not await self._checar_dono(ctx):
@@ -456,7 +456,7 @@ class Loja(commands.Cog):
         await ctx.send(embed=embed)
 
 
-    @commands.command(name="loja-notas")
+    @commands.hybrid_command(name="loja-notas")
     async def loja_notas(self, ctx, produto_id: str = None):
 
         avaliacoes = self.dados.get("avaliacoes", [])
@@ -506,7 +506,7 @@ class Loja(commands.Cog):
     # REMOVER PRODUTO
     # ======================================================
 
-    @commands.command(name="loja-remover-produto")
+    @commands.hybrid_command(name="loja-remover-produto")
     async def loja_remover_produto(self, ctx, produto_id: str):
 
         if not await self._checar_dono(ctx):
@@ -534,7 +534,7 @@ class Loja(commands.Cog):
     # VER / REMOVER ITEM ESPECÍFICO DO ESTOQUE
     # ======================================================
 
-    @commands.command(name="loja-ver-estoque")
+    @commands.hybrid_command(name="loja-ver-estoque")
     async def loja_ver_estoque(self, ctx, produto_id: str):
 
         if not await self._checar_dono(ctx):
@@ -568,7 +568,7 @@ class Loja(commands.Cog):
         )
 
 
-    @commands.command(name="loja-remover-estoque")
+    @commands.hybrid_command(name="loja-remover-estoque")
     async def loja_remover_estoque(self, ctx, produto_id: str, posicao: int):
 
         if not await self._checar_dono(ctx):
@@ -656,7 +656,7 @@ class Loja(commands.Cog):
     # ENVIAR PAINEL
     # ======================================================
 
-    @commands.command(name="loja-painel")
+    @commands.hybrid_command(name="loja-painel")
     async def loja_painel(self, ctx):
 
         if not await self._checar_dono(ctx):
@@ -680,7 +680,7 @@ class Loja(commands.Cog):
         )
 
 
-    @commands.command(name="loja-modelos")
+    @commands.hybrid_command(name="loja-modelos")
     async def loja_modelos(self, ctx):
 
         if not await self._checar_dono(ctx):
@@ -710,7 +710,7 @@ class Loja(commands.Cog):
     # EDITAR PAINEL (título/descrição)
     # ======================================================
 
-    @commands.command(name="editar-painel")
+    @commands.hybrid_command(name="editar-painel")
     async def editar_painel_cmd(self, ctx, *, texto: str = None):
 
         if not await self._checar_dono(ctx):
@@ -750,7 +750,7 @@ class Loja(commands.Cog):
     # PAINEL DE ADMINISTRAÇÃO (mais fácil que comandos)
     # ======================================================
 
-    @commands.command(name="loja-admin")
+    @commands.hybrid_command(name="loja-admin")
     async def loja_admin(self, ctx):
 
         if not await self._checar_dono(ctx):

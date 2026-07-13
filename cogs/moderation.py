@@ -27,7 +27,7 @@ class Moderation(commands.Cog):
     # CONFIGURAR SISTEMA MANUALMENTE
     # ==================================
 
-    @commands.command(name="setup-moderacao")
+    @commands.hybrid_command(name="setup-moderacao")
     @commands.has_permissions(manage_guild=True)
     async def setup_moderacao(self, ctx):
 
@@ -174,7 +174,7 @@ class Moderation(commands.Cog):
     # BAN
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(ban_members=True)
     async def ban(
         self,
@@ -255,7 +255,7 @@ class Moderation(commands.Cog):
     # UNBAN
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(ban_members=True)
     async def unban(
         self,
@@ -332,7 +332,7 @@ class Moderation(commands.Cog):
     # KICK
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(kick_members=True)
     async def kick(
         self,
@@ -400,7 +400,7 @@ class Moderation(commands.Cog):
     # MUTE
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_roles=True)
     async def mute(
         self,
@@ -475,7 +475,7 @@ class Moderation(commands.Cog):
     # UNMUTE
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_roles=True)
     async def unmute(
         self,
@@ -536,7 +536,7 @@ class Moderation(commands.Cog):
     # WARN
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_messages=True)
     async def warn(
         self,
@@ -605,7 +605,7 @@ class Moderation(commands.Cog):
     # VER WARNS
     # ==================================
 
-    @commands.command(name="warns")
+    @commands.hybrid_command(name="warns")
     async def warns(
         self,
         ctx,
@@ -666,7 +666,7 @@ class Moderation(commands.Cog):
     # RETIRAR WARN
     # ==================================
 
-    @commands.command(name="delwarn", aliases=["removerwarn"])
+    @commands.hybrid_command(name="delwarn", aliases=["removerwarn"])
     @commands.has_permissions(manage_messages=True)
     async def delwarn(
         self,
@@ -736,7 +736,7 @@ class Moderation(commands.Cog):
     # LIMPAR CHAT
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_messages=True)
     async def clear(
         self,
@@ -778,7 +778,7 @@ class Moderation(commands.Cog):
     # LOCK - BLOQUEAR CANAL
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_channels=True)
     async def lock(
         self,
@@ -826,7 +826,7 @@ O canal foi bloqueado (mensagens e tópicos).
     # UNLOCK - DESBLOQUEAR CANAL
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_channels=True)
     async def unlock(
         self,
@@ -874,7 +874,7 @@ O canal foi desbloqueado (mensagens e tópicos).
     # SLOWMODE
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_channels=True)
     async def slowmode(
         self,
@@ -930,7 +930,7 @@ O canal foi desbloqueado (mensagens e tópicos).
     # ALTERAR APELIDO
     # ==================================
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.has_permissions(manage_nicknames=True)
     async def nick(
         self,

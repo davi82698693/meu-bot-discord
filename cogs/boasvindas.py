@@ -235,7 +235,7 @@ class BoasVindas(commands.Cog):
         await ctx.send(embed=embed_padrao("❌ Erro", f"```{type(error).__name__}: {error}```", discord.Color.red()))
 
 
-    @commands.command(name="boasvindas-painel")
+    @commands.hybrid_command(name="boasvindas-painel")
     async def boasvindas_painel(self, ctx):
 
         if not await self._checar_admin(ctx):

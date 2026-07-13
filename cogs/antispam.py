@@ -63,7 +63,7 @@ class Antispam(commands.Cog):
         return self.config.get(str(guild_id), True)
 
 
-    @commands.command(name="ativarantispam")
+    @commands.hybrid_command(name="ativarantispam")
     @commands.has_permissions(administrator=True)
     async def ativar_antispam(self, ctx):
 
@@ -80,7 +80,7 @@ class Antispam(commands.Cog):
         )
 
 
-    @commands.command(name="desativarantispam")
+    @commands.hybrid_command(name="desativarantispam")
     @commands.has_permissions(administrator=True)
     async def desativar_antispam(self, ctx):
 
@@ -203,4 +203,3 @@ async def setup(bot):
     await bot.add_cog(
         Antispam(bot)
     )
-    

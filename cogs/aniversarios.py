@@ -142,7 +142,7 @@ class Aniversarios(commands.Cog):
         await ctx.send(embed=embed_padrao("❌ Erro", f"```{type(error).__name__}: {error}```", discord.Color.red()))
 
 
-    @commands.command(name="aniversario")
+    @commands.hybrid_command(name="aniversario")
     async def aniversario(self, ctx, data: str = None):
 
         if data is None:
@@ -173,7 +173,7 @@ class Aniversarios(commands.Cog):
         await ctx.send(embed=embed_padrao("✅ Aniversário salvo!", f"Vamos te parabenizar em **{data}**. 🎉", discord.Color.green()))
 
 
-    @commands.command(name="aniversarios-canal")
+    @commands.hybrid_command(name="aniversarios-canal")
     @commands.has_permissions(administrator=True)
     async def aniversarios_canal(self, ctx, canal: discord.TextChannel):
 
@@ -186,7 +186,7 @@ class Aniversarios(commands.Cog):
         await ctx.send(embed=embed_padrao("✅ Canal definido", f"Aniversários serão anunciados em {canal.mention}.", discord.Color.green()))
 
 
-    @commands.command(name="aniversarios-lista")
+    @commands.hybrid_command(name="aniversarios-lista")
     async def aniversarios_lista(self, ctx):
 
         conf = config(self.dados, ctx.guild.id)

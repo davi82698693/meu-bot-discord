@@ -214,7 +214,7 @@ class Sorteio(commands.Cog):
     # CRIAR SORTEIO (painel)
     # ======================================================
 
-    @commands.command(name="sorteio")
+    @commands.hybrid_command(name="sorteio")
     @commands.has_permissions(manage_guild=True)
     async def sorteio(self, ctx):
 
@@ -230,7 +230,7 @@ class Sorteio(commands.Cog):
     # LISTAR SORTEIOS ATIVOS
     # ======================================================
 
-    @commands.command(name="sorteios")
+    @commands.hybrid_command(name="sorteios")
     @commands.has_permissions(manage_guild=True)
     async def sorteios_ativos(self, ctx):
 
@@ -272,7 +272,7 @@ class Sorteio(commands.Cog):
     # CANCELAR SORTEIO
     # ======================================================
 
-    @commands.command(name="sorteio-cancelar")
+    @commands.hybrid_command(name="sorteio-cancelar")
     @commands.has_permissions(manage_guild=True)
     async def sorteio_cancelar(self, ctx, sorteio_id: str):
 
@@ -319,7 +319,7 @@ class Sorteio(commands.Cog):
     # REROLL (novo sorteio de vencedores)
     # ======================================================
 
-    @commands.command(name="sorteio-reroll")
+    @commands.hybrid_command(name="sorteio-reroll")
     @commands.has_permissions(manage_guild=True)
     async def sorteio_reroll(self, ctx, sorteio_id: str):
 
@@ -368,7 +368,7 @@ class Sorteio(commands.Cog):
     # EDITAR SORTEIO
     # ======================================================
 
-    @commands.command(name="sorteio-editar")
+    @commands.hybrid_command(name="sorteio-editar")
     @commands.has_permissions(manage_guild=True)
     async def sorteio_editar(self, ctx, sorteio_id: str):
 

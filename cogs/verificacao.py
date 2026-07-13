@@ -78,7 +78,7 @@ class Verificacao(commands.Cog):
     # CONFIGURAR SISTEMA MANUALMENTE
     # ==================================
 
-    @commands.command(name="setup-verificacao")
+    @commands.hybrid_command(name="setup-verificacao")
     @commands.has_permissions(manage_guild=True)
     async def setup_verificacao(self, ctx):
 

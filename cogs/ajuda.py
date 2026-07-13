@@ -318,7 +318,7 @@ class Ajuda(commands.Cog):
         self.bot = bot
 
 
-    @commands.command(name="help", aliases=["ajuda", "comandos"])
+    @commands.hybrid_command(name="help", aliases=["ajuda", "comandos"])
     async def help_cmd(self, ctx):
 
         embed = embed_geral(self.bot, ctx.author, ctx.guild)
@@ -329,7 +329,7 @@ class Ajuda(commands.Cog):
         )
 
 
-    @commands.command(name="invite", aliases=["convite", "convidar"])
+    @commands.hybrid_command(name="invite", aliases=["convite", "convidar"])
     async def invite_cmd(self, ctx):
 
         permissoes = discord.Permissions(administrator=True)

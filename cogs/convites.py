@@ -153,7 +153,7 @@ class Convites(commands.Cog):
         self.salvar()
 
 
-    @commands.command(name="convites")
+    @commands.hybrid_command(name="convites")
     async def convites_cmd(self, ctx, membro: discord.Member = None):
 
         membro = membro or ctx.author
@@ -171,7 +171,7 @@ class Convites(commands.Cog):
         )
 
 
-    @commands.command(name="convites-ranking")
+    @commands.hybrid_command(name="convites-ranking")
     async def convites_ranking(self, ctx):
 
         conf = config(self.dados, ctx.guild.id)

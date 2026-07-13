@@ -163,7 +163,7 @@ class Jogos(commands.Cog):
     # ECONOMIA BÁSICA
     # ======================================================
 
-    @commands.command(name="carteira", aliases=["saldo"])
+    @commands.hybrid_command(name="carteira", aliases=["saldo"])
     async def carteira(self, ctx, membro: discord.Member = None):
 
         membro = membro or ctx.author
@@ -177,7 +177,7 @@ class Jogos(commands.Cog):
         )
 
 
-    @commands.command(name="diario")
+    @commands.hybrid_command(name="diario")
     async def diario(self, ctx):
 
         ultimo = self.dados["diario"].get(str(ctx.author.id), 0)
@@ -214,7 +214,7 @@ class Jogos(commands.Cog):
         )
 
 
-    @commands.command(name="pagar")
+    @commands.hybrid_command(name="pagar")
     async def pagar(self, ctx, membro: discord.Member, valor: int):
 
         if membro.id == ctx.author.id:
@@ -241,7 +241,7 @@ class Jogos(commands.Cog):
         )
 
 
-    @commands.command(name="ranking", aliases=["top"])
+    @commands.hybrid_command(name="ranking", aliases=["top"])
     async def ranking(self, ctx):
 
         lista = sorted(self.dados["saldo"].items(), key=lambda x: -x[1])[:10]
@@ -262,7 +262,7 @@ class Jogos(commands.Cog):
     # 1. CARA OU COROA
     # ======================================================
 
-    @commands.command(name="caracoroa")
+    @commands.hybrid_command(name="caracoroa")
     async def caracoroa(self, ctx, lado: str, aposta: int):
 
         lado = lado.lower()
@@ -310,7 +310,7 @@ class Jogos(commands.Cog):
     # 2. DADO DA SORTE
     # ======================================================
 
-    @commands.command(name="dado")
+    @commands.hybrid_command(name="dado")
     async def dado(self, ctx, numero: int, aposta: int):
 
         if numero < 1 or numero > 6:
@@ -357,7 +357,7 @@ class Jogos(commands.Cog):
     # 3. ROLETA
     # ======================================================
 
-    @commands.command(name="roleta")
+    @commands.hybrid_command(name="roleta")
     async def roleta(self, ctx, cor: str, aposta: int):
 
         cor = cor.lower()
@@ -412,7 +412,7 @@ class Jogos(commands.Cog):
     # 4. CAÇA-NÍQUEIS
     # ======================================================
 
-    @commands.command(name="slots", aliases=["caçaniqueis"])
+    @commands.hybrid_command(name="slots", aliases=["caçaniqueis"])
     async def slots(self, ctx, aposta: int):
 
         erro = self._validar_aposta(ctx, aposta)
@@ -469,7 +469,7 @@ class Jogos(commands.Cog):
     # 5. BLACKJACK (21)
     # ======================================================
 
-    @commands.command(name="blackjack", aliases=["21"])
+    @commands.hybrid_command(name="blackjack", aliases=["21"])
     async def blackjack(self, ctx, aposta: int):
 
         erro = self._validar_aposta(ctx, aposta)
@@ -586,7 +586,7 @@ class Jogos(commands.Cog):
     # 6. FORCA
     # ======================================================
 
-    @commands.command(name="forca")
+    @commands.hybrid_command(name="forca")
     async def forca(self, ctx):
 
         if ctx.author.id in self.em_jogo:
@@ -669,7 +669,7 @@ class Jogos(commands.Cog):
     # 7. ADIVINHAÇÃO
     # ======================================================
 
-    @commands.command(name="adivinhar")
+    @commands.hybrid_command(name="adivinhar")
     async def adivinhar(self, ctx):
 
         if ctx.author.id in self.em_jogo:
@@ -739,7 +739,7 @@ class Jogos(commands.Cog):
     # 8. PEDRA, PAPEL OU TESOURA
     # ======================================================
 
-    @commands.command(name="ppt")
+    @commands.hybrid_command(name="ppt")
     async def ppt(self, ctx, escolha: str, aposta: int):
 
         escolha = escolha.lower()
@@ -789,7 +789,7 @@ class Jogos(commands.Cog):
     # 9. MINERAÇÃO
     # ======================================================
 
-    @commands.command(name="minerar")
+    @commands.hybrid_command(name="minerar")
     async def minerar(self, ctx):
 
         ultimo = self.dados["minerar"].get(str(ctx.author.id), 0)
@@ -830,7 +830,7 @@ class Jogos(commands.Cog):
     # 10. PESCARIA
     # ======================================================
 
-    @commands.command(name="pescar")
+    @commands.hybrid_command(name="pescar")
     async def pescar(self, ctx):
 
         ultimo = self.dados["pescar"].get(str(ctx.author.id), 0)
@@ -873,7 +873,7 @@ class Jogos(commands.Cog):
     # MISSÃO DE RESGATE (quando o saldo está baixo/zerado)
     # ======================================================
 
-    @commands.command(name="missao")
+    @commands.hybrid_command(name="missao")
     async def missao(self, ctx):
 
         if self.saldo(ctx.author.id) > MISSAO_LIMITE_SALDO:

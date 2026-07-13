@@ -125,7 +125,7 @@ class Sugestoes(commands.Cog):
         await ctx.send(embed=embed_padrao("❌ Erro", f"```{type(error).__name__}: {error}```", discord.Color.red()))
 
 
-    @commands.command(name="sugestoes-painel")
+    @commands.hybrid_command(name="sugestoes-painel")
     @commands.has_permissions(administrator=True)
     async def sugestoes_painel(self, ctx):
 
@@ -139,7 +139,7 @@ class Sugestoes(commands.Cog):
         )
 
 
-    @commands.command(name="sugestoes-lista")
+    @commands.hybrid_command(name="sugestoes-lista")
     @commands.has_permissions(administrator=True)
     async def sugestoes_lista(self, ctx):
 
@@ -390,4 +390,3 @@ class VotoStaffView(View):
     async def recusar(self, interaction: discord.Interaction, button: Button):
 
         await self._finalizar(interaction, "recusada", "❌ Recusada", discord.Color.red())
-        

@@ -184,7 +184,7 @@ class Tickets(commands.Cog):
     # CONFIGURAR SISTEMA MANUALMENTE
     # ======================================================
 
-    @commands.command(name="setup-tickets")
+    @commands.hybrid_command(name="setup-tickets")
     @commands.has_permissions(manage_guild=True)
     async def setup_tickets(self, ctx):
 
@@ -319,7 +319,7 @@ class Tickets(commands.Cog):
     # REENVIAR / RECRIAR O PAINEL MANUALMENTE
     # ======================================================
 
-    @commands.command(name="painel-ticket", aliases=["painel-tickets"])
+    @commands.hybrid_command(name="painel-ticket", aliases=["painel-tickets"])
     @commands.has_permissions(manage_guild=True)
     async def painel_ticket(self, ctx, canal: discord.TextChannel = None):
 

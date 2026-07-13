@@ -108,7 +108,7 @@ class Autorole(commands.Cog):
         await ctx.send(embed=embed_padrao("❌ Erro", f"```{type(error).__name__}: {error}```", discord.Color.red()))
 
 
-    @commands.command(name="autorole-painel")
+    @commands.hybrid_command(name="autorole-painel")
     @commands.has_permissions(administrator=True)
     async def autorole_painel(self, ctx):
 

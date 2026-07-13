@@ -139,7 +139,7 @@ class Logs(commands.Cog):
         await ctx.send(embed=embed_padrao("❌ Erro", f"```{type(error).__name__}: {error}```", discord.Color.red()))
 
 
-    @commands.command(name="logs-painel")
+    @commands.hybrid_command(name="logs-painel")
     @commands.has_permissions(administrator=True)
     async def logs_painel(self, ctx):
 
@@ -288,4 +288,3 @@ class PainelLogsView(View):
                 await interaction.response.send_message(msg, ephemeral=True)
         except Exception:
             pass
-        
