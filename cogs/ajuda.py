@@ -198,67 +198,30 @@ def saudacao():
     return "Boa noite"
 
 
-def embed_geral(bot, user, guild):
-
-    embed = discord.Embed(
-        title="🎛️ Central de Controle",
-        description=(
-            f"Olá, **{user.display_name}**! {saudacao()} 👋\n\n"
-            "Aqui você acessa rapidamente qualquer parte do bot. "
-            "Escolha uma categoria nos botões abaixo.\n\n"
-            f"Prefixo dos comandos: **`!`**"
-        ),
-        color=discord.Color.blurple(),
-        timestamp=datetime.now(timezone.utc)
-    )
-
-    if bot.user and bot.user.display_avatar:
-        embed.set_thumbnail(url=bot.user.display_avatar.url)
-
-    if guild:
-        embed.set_footer(text=f"{guild.name} • {len(CATEGORIAS)} categorias disponíveis")
-    else:
-        embed.set_footer(text=f"{len(CATEGORIAS)} categorias disponíveis")
-
-    return embed
-
-
-def embed_categoria(chave):
+def texto_categoria(chave):
 
     dados = CATEGORIAS[chave]
 
-    embed = discord.Embed(
-        title=dados["nome"],
-        description=dados["descricao"],
-        color=discord.Color.blurple(),
-        timestamp=datetime.now(timezone.utc)
-    )
+    linhas = [f"## {dados['nome']}", dados["descricao"], ""]
 
     for comando, explicacao in dados["comandos"]:
 
-        embed.add_field(
-            name=comando,
-            value=explicacao,
-            inline=False
-        )
+        linhas.append(f"**{comando}**\n{explicacao}")
 
-    embed.set_footer(text="Clique em 🔙 Voltar para ver as outras categorias")
-
-    return embed
+    return "\n\n".join(linhas)
 
 
 # ==========================================================
-# VIEW — GRID DE BOTÕES (CENTRAL DE CONTROLE)
+# LAYOUT — CENTRAL DE CONTROLE (Components V2)
 # ==========================================================
 
-class BotaoCategoria(Button):
+class BotaoCategoria(discord.ui.Button):
 
-    def __init__(self, chave, nome, row):
+    def __init__(self, chave, nome):
 
         super().__init__(
             label=nome,
-            style=discord.ButtonStyle.secondary,
-            row=row
+            style=discord.ButtonStyle.secondary
         )
 
         self.chave = chave
@@ -266,45 +229,93 @@ class BotaoCategoria(Button):
 
     async def callback(self, interaction: discord.Interaction):
 
-        embed = embed_categoria(self.chave)
+        await interaction.response.edit_message(
+            view=CategoriaLayout(self.chave)
+        )
 
-        await interaction.response.edit_message(embed=embed, view=VoltarView(self.chave))
 
-
-class CentralControleView(View):
+class BotaoVoltar(discord.ui.Button):
 
     def __init__(self):
 
-        super().__init__(timeout=180)
-
-        row = 0
-        contador = 0
-
-        for chave, dados in CATEGORIAS.items():
-
-            self.add_item(BotaoCategoria(chave, dados["nome"], row))
-
-            contador += 1
-
-            if contador % 5 == 0:
-                row += 1
+        super().__init__(
+            label="🔙 Voltar",
+            style=discord.ButtonStyle.primary
+        )
 
 
-class VoltarView(View):
+    async def callback(self, interaction: discord.Interaction):
 
-    def __init__(self, categoria_atual=None):
+        await interaction.response.edit_message(
+            view=CentralControleLayout(interaction.client, interaction.user, interaction.guild)
+        )
+
+
+class CategoriaLayout(discord.ui.LayoutView):
+
+    def __init__(self, chave):
 
         super().__init__(timeout=180)
 
-        self.categoria_atual = categoria_atual
+        container = discord.ui.Container(accent_color=discord.Color.blurple())
+
+        container.add_item(discord.ui.TextDisplay(texto_categoria(chave)))
+
+        container.add_item(discord.ui.Separator())
+
+        linha = discord.ui.ActionRow()
+        linha.add_item(BotaoVoltar())
+
+        container.add_item(linha)
+
+        self.add_item(container)
 
 
-    @discord.ui.button(label="🔙 Voltar", style=discord.ButtonStyle.primary, row=0)
-    async def voltar(self, interaction: discord.Interaction, button: Button):
+class CentralControleLayout(discord.ui.LayoutView):
 
-        embed = embed_geral(interaction.client, interaction.user, interaction.guild)
+    def __init__(self, bot, user, guild):
 
-        await interaction.response.edit_message(embed=embed, view=CentralControleView())
+        super().__init__(timeout=180)
+
+        container = discord.ui.Container(accent_color=discord.Color.blurple())
+
+        cabecalho = (
+            f"## 🎛️ Central de Controle\n"
+            f"Olá, **{user.display_name}**! {saudacao()} 👋\n\n"
+            "Escolha uma categoria abaixo pra ver os comandos.\n\n"
+            "Prefixo: **`!`** ou **`/`**"
+        )
+
+        if bot.user and bot.user.display_avatar:
+
+            secao = discord.ui.Section(
+                cabecalho,
+                accessory=discord.ui.Thumbnail(bot.user.display_avatar.url)
+            )
+
+            container.add_item(secao)
+
+        else:
+
+            container.add_item(discord.ui.TextDisplay(cabecalho))
+
+        container.add_item(discord.ui.Separator())
+
+        chaves = list(CATEGORIAS.items())
+
+        for i in range(0, len(chaves), 5):
+
+            linha = discord.ui.ActionRow()
+
+            for chave, dados in chaves[i:i + 5]:
+                linha.add_item(BotaoCategoria(chave, dados["nome"]))
+
+            container.add_item(linha)
+
+        if guild:
+            container.add_item(discord.ui.TextDisplay(f"-# {guild.name} • {len(CATEGORIAS)} categorias disponíveis"))
+
+        self.add_item(container)
 
 
 # ==========================================================
@@ -321,11 +332,8 @@ class Ajuda(commands.Cog):
     @commands.hybrid_command(name="help", aliases=["ajuda", "comandos"])
     async def help_cmd(self, ctx):
 
-        embed = embed_geral(self.bot, ctx.author, ctx.guild)
-
         await ctx.send(
-            embed=embed,
-            view=CentralControleView()
+            view=CentralControleLayout(self.bot, ctx.author, ctx.guild)
         )
 
 
