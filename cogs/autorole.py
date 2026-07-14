@@ -72,6 +72,11 @@ class Autorole(commands.Cog):
         self.dados = carregar_dados()
 
 
+    async def cog_load(self):
+
+        self.bot.add_view(PainelAutoroleView(self))
+
+
     def salvar(self):
 
         salvar_dados(self.dados)
@@ -162,7 +167,7 @@ class SelecionarCargoAutorole(RoleSelect):
 
         self.cog = cog
 
-        super().__init__(placeholder="➕ Escolha um cargo pra adicionar", row=0)
+        super().__init__(placeholder="➕ Escolha um cargo pra adicionar", row=0, custom_id="autorole_add_select")
 
 
     async def callback(self, interaction: discord.Interaction):
@@ -207,7 +212,7 @@ class RemoverCargoAutorole(Select):
         if not opcoes:
             opcoes = [discord.SelectOption(label="Nenhum cargo configurado", value="dummy")]
 
-        super().__init__(placeholder="➖ Escolha um cargo pra remover", options=opcoes, row=1)
+        super().__init__(placeholder="➖ Escolha um cargo pra remover", options=opcoes, row=1, custom_id="autorole_remove_select")
 
 
     async def callback(self, interaction: discord.Interaction):
@@ -240,9 +245,11 @@ class RemoverCargoAutorole(Select):
 
 class PainelAutoroleView(View):
 
-    def __init__(self, cog, conf):
+    def __init__(self, cog, conf=None):
 
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
+
+        conf = conf or {"cargos": [], "ativo": True}
 
         self.cog = cog
 
@@ -274,7 +281,7 @@ class PainelAutoroleView(View):
             pass
 
 
-    @discord.ui.button(label="🟢 Ativar", style=discord.ButtonStyle.success, row=2)
+    @discord.ui.button(label="🟢 Ativar", style=discord.ButtonStyle.success, row=2, custom_id="autorole_ativar")
     async def ativar(self, interaction: discord.Interaction, button: Button):
 
         conf = config(self.cog.dados, interaction.guild.id)
@@ -287,7 +294,7 @@ class PainelAutoroleView(View):
         )
 
 
-    @discord.ui.button(label="🔴 Desativar", style=discord.ButtonStyle.danger, row=2)
+    @discord.ui.button(label="🔴 Desativar", style=discord.ButtonStyle.danger, row=2, custom_id="autorole_desativar")
     async def desativar(self, interaction: discord.Interaction, button: Button):
 
         conf = config(self.cog.dados, interaction.guild.id)

@@ -401,7 +401,7 @@ class PainelSorteio(View):
 
     def __init__(self, cog, sorteio_id=None):
 
-        super().__init__(timeout=600)
+        super().__init__(timeout=None)
 
         self.cog = cog
 

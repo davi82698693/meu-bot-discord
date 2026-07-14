@@ -221,7 +221,8 @@ class BotaoCategoria(discord.ui.Button):
 
         super().__init__(
             label=nome,
-            style=discord.ButtonStyle.secondary
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"ajuda_categoria_{chave}"
         )
 
         self.chave = chave
@@ -240,7 +241,8 @@ class BotaoVoltar(discord.ui.Button):
 
         super().__init__(
             label="🔙 Voltar",
-            style=discord.ButtonStyle.primary
+            style=discord.ButtonStyle.primary,
+            custom_id="ajuda_voltar"
         )
 
 
@@ -253,9 +255,9 @@ class BotaoVoltar(discord.ui.Button):
 
 class CategoriaLayout(discord.ui.LayoutView):
 
-    def __init__(self, chave):
+    def __init__(self, chave="basicos"):
 
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
 
         container = discord.ui.Container(accent_color=discord.Color.blurple())
 
@@ -275,13 +277,15 @@ class CentralControleLayout(discord.ui.LayoutView):
 
     def __init__(self, bot, user, guild):
 
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
 
         container = discord.ui.Container(accent_color=discord.Color.blurple())
 
+        nome_usuario = user.display_name if user else "administrador"
+
         cabecalho = (
             f"## 🎛️ Central de Controle\n"
-            f"Olá, **{user.display_name}**! {saudacao()} 👋\n\n"
+            f"Olá, **{nome_usuario}**! {saudacao()} 👋\n\n"
             "Escolha uma categoria abaixo pra ver os comandos.\n\n"
             "Prefixo: **`!`** ou **`/`**"
         )
@@ -327,6 +331,12 @@ class Ajuda(commands.Cog):
     def __init__(self, bot):
 
         self.bot = bot
+
+
+    async def cog_load(self):
+
+        self.bot.add_view(CentralControleLayout(self.bot, self.bot.user, None))
+        self.bot.add_view(CategoriaLayout())
 
 
     @commands.hybrid_command(name="help", aliases=["ajuda", "comandos"])

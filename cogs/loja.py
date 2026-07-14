@@ -224,6 +224,10 @@ class Loja(commands.Cog):
         # registra a view do painel (rota fixa pro select funcionar após restart)
         self.bot.add_view(LojaPainelView(self))
 
+        # registra os painéis de administração (nunca expiram)
+        self.bot.add_view(PainelAdminView(self))
+        self.bot.add_view(ModelosView(self))
+
         # reregistra views de pedidos em andamento
         for pedido_id, pedido in list(self.dados["pedidos"].items()):
 
@@ -2143,7 +2147,7 @@ class SelecionarModeloSelect(Select):
         if not opcoes:
             opcoes = [discord.SelectOption(label="Nenhum modelo salvo ainda", value="dummy")]
 
-        super().__init__(placeholder="📂 Escolha um modelo salvo", options=opcoes, row=0)
+        super().__init__(placeholder="📂 Escolha um modelo salvo", options=opcoes, row=0, custom_id="loja_modelos_select")
 
 
     async def callback(self, interaction: discord.Interaction):
@@ -2173,7 +2177,7 @@ class ModelosView(View):
 
     def __init__(self, cog):
 
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
 
         self.cog = cog
 
@@ -2204,7 +2208,7 @@ class ModelosView(View):
             pass
 
 
-    @discord.ui.button(label="➕ Criar Modelo", style=discord.ButtonStyle.success, row=1)
+    @discord.ui.button(label="➕ Criar Modelo", style=discord.ButtonStyle.success, row=1, custom_id="loja_modelos_criar")
     async def criar(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_modal(
@@ -2216,7 +2220,7 @@ class PainelAdminView(View):
 
     def __init__(self, cog):
 
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
 
         self.cog = cog
 
@@ -2256,7 +2260,7 @@ class PainelAdminView(View):
             pass
 
 
-    @discord.ui.button(label="➕ Novo Produto", style=discord.ButtonStyle.success, row=0)
+    @discord.ui.button(label="➕ Novo Produto", style=discord.ButtonStyle.success, row=0, custom_id="loja_admin_novo_produto")
     async def novo_produto(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_modal(
@@ -2264,7 +2268,7 @@ class PainelAdminView(View):
         )
 
 
-    @discord.ui.button(label="📦 Adicionar Estoque", style=discord.ButtonStyle.primary, row=0)
+    @discord.ui.button(label="📦 Adicionar Estoque", style=discord.ButtonStyle.primary, row=0, custom_id="loja_admin_add_estoque")
     async def add_estoque(self, interaction: discord.Interaction, button: Button):
 
         if not self.cog.dados["produtos"]:
@@ -2281,7 +2285,7 @@ class PainelAdminView(View):
         )
 
 
-    @discord.ui.button(label="💰 Configurar PIX", style=discord.ButtonStyle.primary, row=0)
+    @discord.ui.button(label="💰 Configurar PIX", style=discord.ButtonStyle.primary, row=0, custom_id="loja_admin_pix")
     async def config_pix(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_modal(
@@ -2289,7 +2293,7 @@ class PainelAdminView(View):
         )
 
 
-    @discord.ui.button(label="📋 Ver Produtos", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="📋 Ver Produtos", style=discord.ButtonStyle.secondary, row=1, custom_id="loja_admin_ver_produtos")
     async def ver_produtos(self, interaction: discord.Interaction, button: Button):
 
         if not self.cog.dados["produtos"]:
@@ -2312,7 +2316,7 @@ class PainelAdminView(View):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-    @discord.ui.button(label="📤 Enviar Painel Aqui", style=discord.ButtonStyle.success, row=1)
+    @discord.ui.button(label="📤 Enviar Painel Aqui", style=discord.ButtonStyle.success, row=1, custom_id="loja_admin_enviar_painel")
     async def enviar_painel(self, interaction: discord.Interaction, button: Button):
 
         if not self.cog.dados["produtos"]:
@@ -2329,7 +2333,7 @@ class PainelAdminView(View):
         )
 
 
-    @discord.ui.button(label="✏️ Editar Painel", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="✏️ Editar Painel", style=discord.ButtonStyle.secondary, row=1, custom_id="loja_admin_editar_painel")
     async def editar_painel(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_modal(
@@ -2337,7 +2341,7 @@ class PainelAdminView(View):
         )
 
 
-    @discord.ui.button(label="🖼️ Definir Banner", style=discord.ButtonStyle.secondary, row=2)
+    @discord.ui.button(label="🖼️ Definir Banner", style=discord.ButtonStyle.secondary, row=2, custom_id="loja_admin_banner")
     async def definir_banner(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_message(
@@ -2376,7 +2380,7 @@ class PainelAdminView(View):
             )
 
 
-    @discord.ui.button(label="🏷️ Cargo de Cliente", style=discord.ButtonStyle.secondary, row=2)
+    @discord.ui.button(label="🏷️ Cargo de Cliente", style=discord.ButtonStyle.secondary, row=2, custom_id="loja_admin_cargo_cliente")
     async def definir_cargo_cliente(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_message(
@@ -2386,7 +2390,7 @@ class PainelAdminView(View):
         )
 
 
-    @discord.ui.button(label="📁 Modelos de Painel", style=discord.ButtonStyle.primary, row=3)
+    @discord.ui.button(label="📁 Modelos de Painel", style=discord.ButtonStyle.primary, row=3, custom_id="loja_admin_modelos")
     async def modelos(self, interaction: discord.Interaction, button: Button):
 
         modelos = self.cog.dados["config"].get("modelos", {})

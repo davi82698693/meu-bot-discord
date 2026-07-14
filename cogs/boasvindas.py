@@ -165,6 +165,11 @@ class BoasVindas(commands.Cog):
         self.dados = carregar_dados()
 
 
+    async def cog_load(self):
+
+        self.bot.add_view(PainelBoasVindasView(self))
+
+
     def salvar(self):
 
         salvar_dados(self.dados)
@@ -295,7 +300,8 @@ class SelecionarCanalEntrada(ChannelSelect):
         super().__init__(
             placeholder="Escolha o canal de BOAS-VINDAS",
             channel_types=[discord.ChannelType.text],
-            row=0
+            row=0,
+            custom_id="boasvindas_canal_entrada"
         )
 
 
@@ -330,7 +336,8 @@ class SelecionarCanalSaida(ChannelSelect):
         super().__init__(
             placeholder="Escolha o canal de DESPEDIDA",
             channel_types=[discord.ChannelType.text],
-            row=1
+            row=1,
+            custom_id="boasvindas_canal_saida"
         )
 
 
@@ -360,7 +367,7 @@ class PainelBoasVindasView(View):
 
     def __init__(self, cog):
 
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
 
         self.cog = cog
 
@@ -392,7 +399,7 @@ class PainelBoasVindasView(View):
             pass
 
 
-    @discord.ui.button(label="🟢 Ativar", style=discord.ButtonStyle.success, row=2)
+    @discord.ui.button(label="🟢 Ativar", style=discord.ButtonStyle.success, row=2, custom_id="boasvindas_ativar")
     async def ativar(self, interaction: discord.Interaction, button: Button):
 
         conf = self.cog.config(interaction.guild.id)
@@ -402,7 +409,7 @@ class PainelBoasVindasView(View):
         await interaction.response.edit_message(embed=gerar_embed_painel(interaction.guild, conf), view=self)
 
 
-    @discord.ui.button(label="🔴 Desativar", style=discord.ButtonStyle.danger, row=2)
+    @discord.ui.button(label="🔴 Desativar", style=discord.ButtonStyle.danger, row=2, custom_id="boasvindas_desativar")
     async def desativar(self, interaction: discord.Interaction, button: Button):
 
         conf = self.cog.config(interaction.guild.id)
@@ -412,13 +419,13 @@ class PainelBoasVindasView(View):
         await interaction.response.edit_message(embed=gerar_embed_painel(interaction.guild, conf), view=self)
 
 
-    @discord.ui.button(label="🧪 Testar Boas-vindas", style=discord.ButtonStyle.primary, row=3)
+    @discord.ui.button(label="🧪 Testar Boas-vindas", style=discord.ButtonStyle.primary, row=3, custom_id="boasvindas_testar")
     async def testar_entrada(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_message(embed=montar_embed_entrada(interaction.user), ephemeral=True)
 
 
-    @discord.ui.button(label="🧪 Testar Despedida", style=discord.ButtonStyle.secondary, row=3)
+    @discord.ui.button(label="🧪 Testar Despedida", style=discord.ButtonStyle.secondary, row=3, custom_id="boasvindas_testar_saida")
     async def testar_saida(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_message(embed=montar_embed_saida(interaction.user), ephemeral=True)

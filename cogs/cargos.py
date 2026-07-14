@@ -75,6 +75,7 @@ class Cargos(commands.Cog):
     async def cog_load(self):
 
         self.bot.add_view(CargosPainelView(self))
+        self.bot.add_view(PainelAdminCargosView(self))
 
 
     def salvar(self):
@@ -360,7 +361,7 @@ class PainelAdminCargosView(View):
 
     def __init__(self, cog):
 
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
 
         self.cog = cog
 
@@ -389,7 +390,7 @@ class PainelAdminCargosView(View):
             pass
 
 
-    @discord.ui.button(label="➕ Adicionar Cargo", style=discord.ButtonStyle.success, row=0)
+    @discord.ui.button(label="➕ Adicionar Cargo", style=discord.ButtonStyle.success, row=0, custom_id="cargos_admin_add")
     async def adicionar(self, interaction: discord.Interaction, button: Button):
 
         await interaction.response.send_message(
@@ -399,7 +400,7 @@ class PainelAdminCargosView(View):
         )
 
 
-    @discord.ui.button(label="🗑️ Remover Cargo", style=discord.ButtonStyle.danger, row=0)
+    @discord.ui.button(label="🗑️ Remover Cargo", style=discord.ButtonStyle.danger, row=0, custom_id="cargos_admin_remove")
     async def remover(self, interaction: discord.Interaction, button: Button):
 
         conf = config(self.cog.dados, interaction.guild.id)
@@ -411,7 +412,7 @@ class PainelAdminCargosView(View):
         )
 
 
-    @discord.ui.button(label="📤 Enviar Painel Aqui", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(label="📤 Enviar Painel Aqui", style=discord.ButtonStyle.primary, row=1, custom_id="cargos_admin_enviar")
     async def enviar(self, interaction: discord.Interaction, button: Button):
 
         conf = config(self.cog.dados, interaction.guild.id)

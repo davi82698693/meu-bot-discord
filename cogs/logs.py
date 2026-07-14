@@ -122,6 +122,11 @@ class Logs(commands.Cog):
         self.dados = carregar_dados()
 
 
+    async def cog_load(self):
+
+        self.bot.add_view(PainelLogsView(self))
+
+
     def salvar(self):
 
         salvar_dados(self.dados)
@@ -197,7 +202,7 @@ class SelecionarCategoriaLog(Select):
             for chave, nome in CATEGORIAS.items()
         ]
 
-        super().__init__(placeholder="Escolha a categoria pra configurar", options=opcoes, row=0)
+        super().__init__(placeholder="Escolha a categoria pra configurar", options=opcoes, row=0, custom_id="logs_select_categoria")
 
 
     async def callback(self, interaction: discord.Interaction):
@@ -259,7 +264,7 @@ class PainelLogsView(View):
 
     def __init__(self, cog):
 
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
 
         self.cog = cog
 
