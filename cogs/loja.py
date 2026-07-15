@@ -199,6 +199,38 @@ def embed_padrao(titulo, descricao, cor=discord.Color.blurple()):
     return embed
 
 
+def container_view(texto, source_view, accent_color=discord.Color.gold()):
+    """
+    Pega os botões/selects já existentes de uma View comum e monta um
+    LayoutView com Container (visual novo), sem duplicar a lógica dos botões.
+    """
+
+    layout = discord.ui.LayoutView(timeout=None)
+
+    container = discord.ui.Container(accent_color=accent_color)
+
+    container.add_item(discord.ui.TextDisplay(texto))
+    container.add_item(discord.ui.Separator())
+
+    por_row = {}
+
+    for item in list(source_view.children):
+        por_row.setdefault(item.row or 0, []).append(item)
+
+    for numero in sorted(por_row):
+
+        linha = discord.ui.ActionRow()
+
+        for item in por_row[numero]:
+            linha.add_item(item)
+
+        container.add_item(linha)
+
+    layout.add_item(container)
+
+    return layout
+
+
 
 # ==========================================================
 # COG
@@ -694,20 +726,18 @@ class Loja(commands.Cog):
 
         modelos = self.dados["config"].get("modelos", {})
 
-        embed = embed_padrao(
-            "📁 Modelos de Painel",
-            "Modelos salvos que você pode reenviar ou editar a qualquer momento, sem montar do zero.",
-            discord.Color.blurple()
+        if modelos:
+            lista = "\n".join(f"• **{m['nome']}** — {len(m['produtos'])} produto(s)" for m in modelos.values())
+        else:
+            lista = "_Nenhum modelo salvo ainda._"
+
+        texto = (
+            "## 📁 Modelos de Painel\n"
+            "Modelos salvos que você pode reenviar ou editar a qualquer momento, sem montar do zero.\n\n"
+            f"**Modelos salvos**\n{lista}"
         )
 
-        if modelos:
-            texto = "\n".join(f"• **{m['nome']}** — {len(m['produtos'])} produto(s)" for m in modelos.values())
-        else:
-            texto = "_Nenhum modelo salvo ainda._"
-
-        embed.add_field(name="Modelos salvos", value=texto, inline=False)
-
-        await ctx.send(embed=embed, view=ModelosView(self))
+        await ctx.send(view=container_view(texto, ModelosView(self)))
 
 
     # ======================================================
@@ -762,13 +792,12 @@ class Loja(commands.Cog):
                 embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
             )
 
-        embed = embed_padrao(
-            "🛠️ Painel de Administração da Loja",
-            "Use os botões abaixo para gerenciar a loja sem precisar decorar comandos.",
-            discord.Color.blurple()
+        texto = (
+            "## 🛠️ Painel de Administração da Loja\n"
+            "Use os botões abaixo para gerenciar a loja sem precisar decorar comandos."
         )
 
-        await ctx.send(embed=embed, view=PainelAdminView(self))
+        await ctx.send(view=container_view(texto, PainelAdminView(self)))
 
 
 # ==========================================================
@@ -2395,20 +2424,18 @@ class PainelAdminView(View):
 
         modelos = self.cog.dados["config"].get("modelos", {})
 
-        embed = embed_padrao(
-            "📁 Modelos de Painel",
-            "Modelos salvos que você pode reenviar ou editar a qualquer momento, sem montar do zero.",
-            discord.Color.blurple()
+        if modelos:
+            lista = "\n".join(f"• **{m['nome']}** — {len(m['produtos'])} produto(s)" for m in modelos.values())
+        else:
+            lista = "_Nenhum modelo salvo ainda._"
+
+        texto = (
+            "## 📁 Modelos de Painel\n"
+            "Modelos salvos que você pode reenviar ou editar a qualquer momento, sem montar do zero.\n\n"
+            f"**Modelos salvos**\n{lista}"
         )
 
-        if modelos:
-            texto = "\n".join(f"• **{m['nome']}** — {len(m['produtos'])} produto(s)" for m in modelos.values())
-        else:
-            texto = "_Nenhum modelo salvo ainda._"
-
-        embed.add_field(name="Modelos salvos", value=texto, inline=False)
-
-        await interaction.response.send_message(embed=embed, view=ModelosView(self.cog), ephemeral=True)
+        await interaction.response.send_message(view=container_view(texto, ModelosView(self.cog)), ephemeral=True)
 
 
 

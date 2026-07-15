@@ -251,8 +251,7 @@ class BoasVindas(commands.Cog):
         conf = self.config(ctx.guild.id)
 
         await ctx.send(
-            embed=gerar_embed_painel(ctx.guild, conf),
-            view=PainelBoasVindasView(self)
+            view=container_view(texto_painel(ctx.guild, conf), PainelBoasVindasView(self))
         )
 
 
@@ -285,6 +284,54 @@ def gerar_embed_painel(guild, conf):
     embed.add_field(name="🚪 Canal de Despedida", value=canal_saida.mention if canal_saida else "`Não definido`", inline=False)
 
     return embed
+
+
+def texto_painel(guild, conf):
+
+    canal_entrada = guild.get_channel(conf.get("canal_entrada")) if conf.get("canal_entrada") else None
+    canal_saida = guild.get_channel(conf.get("canal_saida")) if conf.get("canal_saida") else None
+
+    status = "🟢 Ativado" if conf.get("ativo", True) else "🔴 Desativado"
+
+    return (
+        "## 🛠️ Painel de Boas-vindas\n"
+        "Configure abaixo os canais de entrada e saída. O visual das mensagens já vem pronto.\n\n"
+        f"**Status:** {status}\n"
+        f"**👋 Canal de Boas-vindas:** {canal_entrada.mention if canal_entrada else '`Não definido`'}\n"
+        f"**🚪 Canal de Despedida:** {canal_saida.mention if canal_saida else '`Não definido`'}"
+    )
+
+
+def container_view(texto, source_view, accent_color=discord.Color.blurple()):
+    """
+    Pega os botões/selects já existentes de uma View comum e monta um
+    LayoutView com Container (visual novo), sem duplicar a lógica dos botões.
+    """
+
+    layout = discord.ui.LayoutView(timeout=None)
+
+    container = discord.ui.Container(accent_color=accent_color)
+
+    container.add_item(discord.ui.TextDisplay(texto))
+    container.add_item(discord.ui.Separator())
+
+    por_row = {}
+
+    for item in list(source_view.children):
+        por_row.setdefault(item.row or 0, []).append(item)
+
+    for numero in sorted(por_row):
+
+        linha = discord.ui.ActionRow()
+
+        for item in por_row[numero]:
+            linha.add_item(item)
+
+        container.add_item(linha)
+
+    layout.add_item(container)
+
+    return layout
 
 
 # ==========================================================
@@ -322,8 +369,7 @@ class SelecionarCanalEntrada(ChannelSelect):
         self.cog.salvar()
 
         await interaction.response.edit_message(
-            embed=gerar_embed_painel(interaction.guild, conf),
-            view=self.view
+            view=container_view(texto_painel(interaction.guild, conf), self.view)
         )
 
 
@@ -358,8 +404,7 @@ class SelecionarCanalSaida(ChannelSelect):
         self.cog.salvar()
 
         await interaction.response.edit_message(
-            embed=gerar_embed_painel(interaction.guild, conf),
-            view=self.view
+            view=container_view(texto_painel(interaction.guild, conf), self.view)
         )
 
 
@@ -406,7 +451,7 @@ class PainelBoasVindasView(View):
         conf["ativo"] = True
         self.cog.salvar()
 
-        await interaction.response.edit_message(embed=gerar_embed_painel(interaction.guild, conf), view=self)
+        await interaction.response.edit_message(view=container_view(texto_painel(interaction.guild, conf), self))
 
 
     @discord.ui.button(label="🔴 Desativar", style=discord.ButtonStyle.danger, row=2, custom_id="boasvindas_desativar")
@@ -416,7 +461,7 @@ class PainelBoasVindasView(View):
         conf["ativo"] = False
         self.cog.salvar()
 
-        await interaction.response.edit_message(embed=gerar_embed_painel(interaction.guild, conf), view=self)
+        await interaction.response.edit_message(view=container_view(texto_painel(interaction.guild, conf), self))
 
 
     @discord.ui.button(label="🧪 Testar Boas-vindas", style=discord.ButtonStyle.primary, row=3, custom_id="boasvindas_testar")

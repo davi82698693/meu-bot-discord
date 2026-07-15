@@ -120,8 +120,7 @@ class Autorole(commands.Cog):
         conf = config(self.dados, ctx.guild.id)
 
         await ctx.send(
-            embed=gerar_embed_painel(ctx.guild, conf),
-            view=PainelAutoroleView(self, conf)
+            view=container_view(texto_painel(ctx.guild, conf), PainelAutoroleView(self, conf))
         )
 
 
@@ -157,6 +156,55 @@ def gerar_embed_painel(guild, conf):
     return embed
 
 
+def texto_painel(guild, conf):
+
+    status = "🟢 Ativado" if conf.get("ativo", True) else "🔴 Desativado"
+
+    if conf["cargos"]:
+        cargos_txt = "\n".join(f"<@&{cid}>" for cid in conf["cargos"])
+    else:
+        cargos_txt = "_Nenhum cargo configurado._"
+
+    return (
+        "## 🛠️ Painel de Cargo Automático\n"
+        "Escolha os cargos que todo novo membro recebe automaticamente ao entrar no servidor.\n\n"
+        f"**Status:** {status}\n\n"
+        f"**Cargos configurados**\n{cargos_txt}"
+    )
+
+
+def container_view(texto, source_view, accent_color=discord.Color.blurple()):
+    """
+    Pega os botões/selects já existentes de uma View comum e monta um
+    LayoutView com Container (visual novo), sem duplicar a lógica dos botões.
+    """
+
+    layout = discord.ui.LayoutView(timeout=None)
+
+    container = discord.ui.Container(accent_color=accent_color)
+
+    container.add_item(discord.ui.TextDisplay(texto))
+    container.add_item(discord.ui.Separator())
+
+    por_row = {}
+
+    for item in list(source_view.children):
+        por_row.setdefault(item.row or 0, []).append(item)
+
+    for numero in sorted(por_row):
+
+        linha = discord.ui.ActionRow()
+
+        for item in por_row[numero]:
+            linha.add_item(item)
+
+        container.add_item(linha)
+
+    layout.add_item(container)
+
+    return layout
+
+
 # ==========================================================
 # ADICIONAR CARGO
 # ==========================================================
@@ -189,8 +237,7 @@ class SelecionarCargoAutorole(RoleSelect):
         self.cog.salvar()
 
         await interaction.response.edit_message(
-            embed=gerar_embed_painel(interaction.guild, conf),
-            view=PainelAutoroleView(self.cog, conf)
+            view=container_view(texto_painel(interaction.guild, conf), PainelAutoroleView(self.cog, conf))
         )
 
 
@@ -234,8 +281,7 @@ class RemoverCargoAutorole(Select):
         self.cog.salvar()
 
         await interaction.response.edit_message(
-            embed=gerar_embed_painel(interaction.guild, conf),
-            view=PainelAutoroleView(self.cog, conf)
+            view=container_view(texto_painel(interaction.guild, conf), PainelAutoroleView(self.cog, conf))
         )
 
 
@@ -289,8 +335,7 @@ class PainelAutoroleView(View):
         self.cog.salvar()
 
         await interaction.response.edit_message(
-            embed=gerar_embed_painel(interaction.guild, conf),
-            view=PainelAutoroleView(self.cog, conf)
+            view=container_view(texto_painel(interaction.guild, conf), PainelAutoroleView(self.cog, conf))
         )
 
 
@@ -302,6 +347,5 @@ class PainelAutoroleView(View):
         self.cog.salvar()
 
         await interaction.response.edit_message(
-            embed=gerar_embed_painel(interaction.guild, conf),
-            view=PainelAutoroleView(self.cog, conf)
+            view=container_view(texto_painel(interaction.guild, conf), PainelAutoroleView(self.cog, conf))
         )

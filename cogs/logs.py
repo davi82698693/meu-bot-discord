@@ -151,8 +151,7 @@ class Logs(commands.Cog):
         conf = self.config(ctx.guild.id)
 
         await ctx.send(
-            embed=gerar_embed_painel(ctx.guild, conf),
-            view=PainelLogsView(self)
+            view=container_view(texto_painel(ctx.guild, conf), PainelLogsView(self))
         )
 
 
@@ -189,6 +188,59 @@ def gerar_embed_painel(guild, conf):
     embed.add_field(name="Configuração atual", value=texto, inline=False)
 
     return embed
+
+
+def texto_painel(guild, conf):
+
+    linhas = [
+        "## 🛠️ Painel de Logs",
+        "Escolha uma categoria no menu abaixo e depois o canal onde os logs dela devem cair. "
+        "Categorias sem canal próprio usam o canal **Geral**, se ele estiver configurado.",
+        "",
+        "**Configuração atual**"
+    ]
+
+    for chave, nome in CATEGORIAS.items():
+
+        canal_id = conf.get(chave)
+
+        canal_txt = f"<#{canal_id}>" if canal_id else "`Não definido`"
+
+        linhas.append(f"{nome}: {canal_txt}")
+
+    return "\n".join(linhas)
+
+
+def container_view(texto, source_view, accent_color=discord.Color.blurple()):
+    """
+    Pega os botões/selects já existentes de uma View comum e monta um
+    LayoutView com Container (visual novo), sem duplicar a lógica dos botões.
+    """
+
+    layout = discord.ui.LayoutView(timeout=None)
+
+    container = discord.ui.Container(accent_color=accent_color)
+
+    container.add_item(discord.ui.TextDisplay(texto))
+    container.add_item(discord.ui.Separator())
+
+    por_row = {}
+
+    for item in list(source_view.children):
+        por_row.setdefault(item.row or 0, []).append(item)
+
+    for numero in sorted(por_row):
+
+        linha = discord.ui.ActionRow()
+
+        for item in por_row[numero]:
+            linha.add_item(item)
+
+        container.add_item(linha)
+
+    layout.add_item(container)
+
+    return layout
 
 
 class SelecionarCategoriaLog(Select):

@@ -97,8 +97,7 @@ class Cargos(commands.Cog):
         conf = config(self.dados, ctx.guild.id)
 
         await ctx.send(
-            embed=gerar_embed_admin(ctx.guild, conf),
-            view=PainelAdminCargosView(self)
+            view=container_view(texto_painel_admin(ctx.guild, conf), PainelAdminCargosView(self))
         )
 
 
@@ -107,6 +106,61 @@ async def setup(bot):
     await bot.add_cog(
         Cargos(bot)
     )
+
+
+def texto_painel_admin(guild, conf):
+
+    linhas = [
+        "## 🛠️ Painel de Cargos Automáticos",
+        "Adicione cargos que os membros vão poder escolher sozinhos, depois clique em "
+        "**📤 Enviar Painel Aqui** no canal desejado.",
+        ""
+    ]
+
+    if not conf["cargos"]:
+
+        linhas.append("**Cargos configurados:** _Nenhum ainda._")
+
+    else:
+
+        linhas.append(f"**Cargos configurados ({len(conf['cargos'])}/25):**")
+
+        for c in conf["cargos"]:
+            linhas.append(f"{c['emoji']} <@&{c['id']}>")
+
+    return "\n".join(linhas)
+
+
+def container_view(texto, source_view, accent_color=discord.Color.blurple()):
+    """
+    Pega os botões/selects já existentes de uma View comum e monta um
+    LayoutView com Container (visual novo), sem duplicar a lógica dos botões.
+    """
+
+    layout = discord.ui.LayoutView(timeout=None)
+
+    container = discord.ui.Container(accent_color=accent_color)
+
+    container.add_item(discord.ui.TextDisplay(texto))
+    container.add_item(discord.ui.Separator())
+
+    por_row = {}
+
+    for item in list(source_view.children):
+        por_row.setdefault(item.row or 0, []).append(item)
+
+    for numero in sorted(por_row):
+
+        linha = discord.ui.ActionRow()
+
+        for item in por_row[numero]:
+            linha.add_item(item)
+
+        container.add_item(linha)
+
+    layout.add_item(container)
+
+    return layout
 
 
 # ==========================================================
