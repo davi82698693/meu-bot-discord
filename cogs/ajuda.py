@@ -18,6 +18,9 @@ CATEGORIAS = {
         "comandos": [
             ("!help", "Mostra esta central de ajuda."),
             ("!invite", "Gera o link para convidar o bot para outro servidor."),
+            ("!stats", "Mostra um dashboard com estatísticas do servidor e do bot."),
+            ("!backup", "Gera um arquivo .zip com todos os dados configurados (Administrador)."),
+            ("!restore", "Restaura dados a partir de um backup .zip anexado (Administrador, só via !)."),
         ]
     },
 
