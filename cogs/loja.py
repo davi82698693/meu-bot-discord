@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime, timezone
 
 from discord.ext import commands
+from discord import app_commands
 from discord.ui import View, Select, Button, Modal, TextInput, RoleSelect
 
 from .logs import obter_canal_log
@@ -313,6 +314,7 @@ class Loja(commands.Cog):
     # ADICIONAR PRODUTO
     # ======================================================
 
+    @app_commands.describe(nome="Nome do produto", preco="Preço (ex: 25,00)", descricao="Descrição do produto")
     @commands.hybrid_command(name="loja-add-produto")
     async def loja_add_produto(self, ctx, nome: str, preco: str, *, descricao: str = "Sem descrição."):
 
@@ -492,6 +494,7 @@ class Loja(commands.Cog):
         await ctx.send(embed=embed)
 
 
+    @app_commands.describe(produto_id="ID do produto (deixe vazio pra ver a nota geral da loja)")
     @commands.hybrid_command(name="loja-notas")
     async def loja_notas(self, ctx, produto_id: str = None):
 
@@ -542,6 +545,7 @@ class Loja(commands.Cog):
     # REMOVER PRODUTO
     # ======================================================
 
+    @app_commands.describe(produto_id="ID do produto (veja com !loja-produtos)")
     @commands.hybrid_command(name="loja-remover-produto")
     async def loja_remover_produto(self, ctx, produto_id: str):
 
@@ -570,6 +574,7 @@ class Loja(commands.Cog):
     # VER / REMOVER ITEM ESPECÍFICO DO ESTOQUE
     # ======================================================
 
+    @app_commands.describe(produto_id="ID do produto")
     @commands.hybrid_command(name="loja-ver-estoque")
     async def loja_ver_estoque(self, ctx, produto_id: str):
 
@@ -604,6 +609,7 @@ class Loja(commands.Cog):
         )
 
 
+    @app_commands.describe(produto_id="ID do produto", posicao="Posição do item no estoque (veja com !loja-ver-estoque)")
     @commands.hybrid_command(name="loja-remover-estoque")
     async def loja_remover_estoque(self, ctx, produto_id: str, posicao: int):
 
@@ -649,6 +655,7 @@ class Loja(commands.Cog):
     # CONFIGURAR PIX
     # ======================================================
 
+    @app_commands.describe(chave="Chave PIX copia-e-cola (anexe a imagem do QR code junto, só funciona via !)")
     @commands.command(name="loja-pix")
     async def loja_pix(self, ctx, *, chave: str):
 
@@ -744,6 +751,7 @@ class Loja(commands.Cog):
     # EDITAR PAINEL (título/descrição)
     # ======================================================
 
+    @app_commands.describe(texto="Formato: Título | Descrição")
     @commands.hybrid_command(name="editar-painel")
     async def editar_painel_cmd(self, ctx, *, texto: str = None):
 

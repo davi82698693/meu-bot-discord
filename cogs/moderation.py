@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 from datetime import datetime
 
@@ -174,6 +175,7 @@ class Moderation(commands.Cog):
     # BAN
     # ==================================
 
+    @app_commands.describe(member="Usuário a ser banido", reason="Motivo do banimento")
     @commands.hybrid_command()
     @commands.has_permissions(ban_members=True)
     async def ban(
@@ -255,6 +257,7 @@ class Moderation(commands.Cog):
     # UNBAN
     # ==================================
 
+    @app_commands.describe(user_id="ID do usuário a desbanir", reason="Motivo do desbanimento")
     @commands.hybrid_command()
     @commands.has_permissions(ban_members=True)
     async def unban(
@@ -332,6 +335,7 @@ class Moderation(commands.Cog):
     # KICK
     # ==================================
 
+    @app_commands.describe(member="Usuário a ser expulso", reason="Motivo da expulsão")
     @commands.hybrid_command()
     @commands.has_permissions(kick_members=True)
     async def kick(
@@ -400,6 +404,7 @@ class Moderation(commands.Cog):
     # MUTE
     # ==================================
 
+    @app_commands.describe(member="Usuário a silenciar", reason="Motivo do silenciamento")
     @commands.hybrid_command()
     @commands.has_permissions(manage_roles=True)
     async def mute(
@@ -475,6 +480,7 @@ class Moderation(commands.Cog):
     # UNMUTE
     # ==================================
 
+    @app_commands.describe(member="Usuário a desmutar")
     @commands.hybrid_command()
     @commands.has_permissions(manage_roles=True)
     async def unmute(
@@ -536,6 +542,7 @@ class Moderation(commands.Cog):
     # WARN
     # ==================================
 
+    @app_commands.describe(member="Usuário a advertir", reason="Motivo da advertência")
     @commands.hybrid_command()
     @commands.has_permissions(manage_messages=True)
     async def warn(
@@ -605,6 +612,7 @@ class Moderation(commands.Cog):
     # VER WARNS
     # ==================================
 
+    @app_commands.describe(member="Usuário pra ver as advertências (deixe vazio pra ver as suas)")
     @commands.hybrid_command(name="warns")
     async def warns(
         self,
@@ -666,6 +674,7 @@ class Moderation(commands.Cog):
     # RETIRAR WARN
     # ==================================
 
+    @app_commands.describe(member="Usuário", numero="Número do warn (veja com !warns)")
     @commands.hybrid_command(name="delwarn", aliases=["removerwarn"])
     @commands.has_permissions(manage_messages=True)
     async def delwarn(
@@ -736,6 +745,7 @@ class Moderation(commands.Cog):
     # LIMPAR CHAT
     # ==================================
 
+    @app_commands.describe(quantidade="Quantas mensagens apagar")
     @commands.hybrid_command()
     @commands.has_permissions(manage_messages=True)
     async def clear(
@@ -874,6 +884,7 @@ O canal foi desbloqueado (mensagens e tópicos).
     # SLOWMODE
     # ==================================
 
+    @app_commands.describe(segundos="Tempo entre mensagens, em segundos (0 a 21600)")
     @commands.hybrid_command()
     @commands.has_permissions(manage_channels=True)
     async def slowmode(
@@ -930,6 +941,7 @@ O canal foi desbloqueado (mensagens e tópicos).
     # ALTERAR APELIDO
     # ==================================
 
+    @app_commands.describe(member="Usuário a renomear", nome="Novo apelido (deixe vazio pra remover)")
     @commands.hybrid_command()
     @commands.has_permissions(manage_nicknames=True)
     async def nick(

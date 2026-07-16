@@ -7,6 +7,7 @@ import asyncio
 
 from datetime import datetime, timezone, timedelta
 
+from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, Button
 
@@ -163,6 +164,7 @@ class Jogos(commands.Cog):
     # ECONOMIA BÁSICA
     # ======================================================
 
+    @app_commands.describe(membro="De quem ver o saldo (deixe vazio pra ver o seu)")
     @commands.hybrid_command(name="carteira", aliases=["saldo"])
     async def carteira(self, ctx, membro: discord.Member = None):
 
@@ -214,6 +216,7 @@ class Jogos(commands.Cog):
         )
 
 
+    @app_commands.describe(membro="Pra quem transferir", valor="Quantidade de moedas")
     @commands.hybrid_command(name="pagar")
     async def pagar(self, ctx, membro: discord.Member, valor: int):
 
@@ -262,6 +265,7 @@ class Jogos(commands.Cog):
     # 1. CARA OU COROA
     # ======================================================
 
+    @app_commands.describe(lado="cara ou coroa", aposta="Quantidade de moedas apostadas")
     @commands.hybrid_command(name="caracoroa")
     async def caracoroa(self, ctx, lado: str, aposta: int):
 
@@ -310,6 +314,7 @@ class Jogos(commands.Cog):
     # 2. DADO DA SORTE
     # ======================================================
 
+    @app_commands.describe(numero="Número de 1 a 6 que você acha que vai cair", aposta="Quantidade de moedas apostadas")
     @commands.hybrid_command(name="dado")
     async def dado(self, ctx, numero: int, aposta: int):
 
@@ -357,6 +362,7 @@ class Jogos(commands.Cog):
     # 3. ROLETA
     # ======================================================
 
+    @app_commands.describe(cor="vermelho, preto ou verde", aposta="Quantidade de moedas apostadas")
     @commands.hybrid_command(name="roleta")
     async def roleta(self, ctx, cor: str, aposta: int):
 
@@ -412,6 +418,7 @@ class Jogos(commands.Cog):
     # 4. CAÇA-NÍQUEIS
     # ======================================================
 
+    @app_commands.describe(aposta="Quantidade de moedas apostadas")
     @commands.hybrid_command(name="slots", aliases=["caçaniqueis"])
     async def slots(self, ctx, aposta: int):
 
@@ -469,6 +476,7 @@ class Jogos(commands.Cog):
     # 5. BLACKJACK (21)
     # ======================================================
 
+    @app_commands.describe(aposta="Quantidade de moedas apostadas")
     @commands.hybrid_command(name="blackjack", aliases=["21"])
     async def blackjack(self, ctx, aposta: int):
 
@@ -739,6 +747,7 @@ class Jogos(commands.Cog):
     # 8. PEDRA, PAPEL OU TESOURA
     # ======================================================
 
+    @app_commands.describe(escolha="pedra, papel ou tesoura", aposta="Quantidade de moedas apostadas")
     @commands.hybrid_command(name="ppt")
     async def ppt(self, ctx, escolha: str, aposta: int):
 

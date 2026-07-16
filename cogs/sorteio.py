@@ -7,6 +7,7 @@ import time
 
 from datetime import datetime, timezone
 
+from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, Button, Modal, TextInput, ChannelSelect, RoleSelect
 
@@ -272,6 +273,7 @@ class Sorteio(commands.Cog):
     # CANCELAR SORTEIO
     # ======================================================
 
+    @app_commands.describe(sorteio_id="ID do sorteio (veja com !sorteios)")
     @commands.hybrid_command(name="sorteio-cancelar")
     @commands.has_permissions(manage_guild=True)
     async def sorteio_cancelar(self, ctx, sorteio_id: str):
@@ -319,6 +321,7 @@ class Sorteio(commands.Cog):
     # REROLL (novo sorteio de vencedores)
     # ======================================================
 
+    @app_commands.describe(sorteio_id="ID do sorteio já finalizado")
     @commands.hybrid_command(name="sorteio-reroll")
     @commands.has_permissions(manage_guild=True)
     async def sorteio_reroll(self, ctx, sorteio_id: str):
@@ -368,6 +371,7 @@ class Sorteio(commands.Cog):
     # EDITAR SORTEIO
     # ======================================================
 
+    @app_commands.describe(sorteio_id="ID do sorteio ativo (veja com !sorteios)")
     @commands.hybrid_command(name="sorteio-editar")
     @commands.has_permissions(manage_guild=True)
     async def sorteio_editar(self, ctx, sorteio_id: str):
