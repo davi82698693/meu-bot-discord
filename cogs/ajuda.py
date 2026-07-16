@@ -24,6 +24,16 @@ CATEGORIAS = {
         ]
     },
 
+    "automod": {
+        "nome": "🚨 AutoMod",
+        "descricao": "Bloqueia mensagens com palavras proibidas e avisa num canal de log.",
+        "comandos": [
+            ("!automod-painel", "Painel: adicionar/remover palavras e escolher o canal de log."),
+            ("!automod-ativar", "Liga o bloqueio automático."),
+            ("!automod-desativar", "Desliga o bloqueio automático."),
+        ]
+    },
+
     "antispam": {
         "nome": "🚫 Anti-spam",
         "descricao": "Proteção automática contra flood de mensagens (Administrador).",
