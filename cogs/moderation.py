@@ -404,13 +404,14 @@ class Moderation(commands.Cog):
     # MUTE
     # ==================================
 
-    @app_commands.describe(member="Usuário a silenciar", reason="Motivo do silenciamento")
+    @app_commands.describe(member="Usuário a silenciar", duracao="Tempo em minutos (padrão: 10, máx: 40320 = 28 dias)", reason="Motivo do silenciamento")
     @commands.hybrid_command()
-    @commands.has_permissions(manage_roles=True)
+    @commands.has_permissions(moderate_members=True)
     async def mute(
         self,
         ctx,
         member: discord.Member = None,
+        duracao: int = 10,
         *,
         reason="Não informado"
     ):
@@ -426,26 +427,54 @@ class Moderation(commands.Cog):
             )
 
 
-        role = discord.utils.get(
-            ctx.guild.roles,
-            name="🔇 Muted"
-        )
-
-
-        if role is None:
+        if member == ctx.author:
 
             return await ctx.send(
                 embed=self.embed(
                     "❌ Erro",
-                    "O cargo 🔇 Muted não existe. Use `!setup-moderacao` primeiro."
+                    "Você não pode se mutar."
                 )
             )
 
 
-        await member.add_roles(
-            role,
-            reason=reason
-        )
+        if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "Você não pode mutar alguém com cargo igual ou superior."
+                )
+            )
+
+
+        if duracao <= 0 or duracao > 40320:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Erro",
+                    "A duração precisa ser entre 1 minuto e 40320 minutos (28 dias)."
+                )
+            )
+
+
+        from datetime import timedelta
+
+        try:
+
+            await member.timeout(
+                discord.utils.utcnow() + timedelta(minutes=duracao),
+                reason=reason
+            )
+
+        except discord.Forbidden:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Sem permissão",
+                    "Não consegui silenciar esse usuário — confira se meu cargo está **acima** do cargo dele, "
+                    "e se eu tenho a permissão **Silenciar Membros**."
+                )
+            )
 
 
         embed = self.embed(
@@ -453,6 +482,9 @@ class Moderation(commands.Cog):
             f"""
 👤 **Usuário:**
 {member.mention}
+
+⏱️ **Duração:**
+{duracao} minuto(s)
 
 🛡️ **Moderador:**
 {ctx.author.mention}
@@ -482,7 +514,7 @@ class Moderation(commands.Cog):
 
     @app_commands.describe(member="Usuário a desmutar")
     @commands.hybrid_command()
-    @commands.has_permissions(manage_roles=True)
+    @commands.has_permissions(moderate_members=True)
     async def unmute(
         self,
         ctx,
@@ -500,16 +532,28 @@ class Moderation(commands.Cog):
             )
 
 
-        role = discord.utils.get(
-            ctx.guild.roles,
-            name="🔇 Muted"
-        )
+        if member.timed_out_until is None:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "⚠️ Aviso",
+                    f"{member.mention} não está silenciado no momento.",
+                    discord.Color.orange()
+                )
+            )
 
 
-        if role in member.roles:
+        try:
 
-            await member.remove_roles(
-                role
+            await member.timeout(None, reason=f"Desmutado por {ctx.author}")
+
+        except discord.Forbidden:
+
+            return await ctx.send(
+                embed=self.embed(
+                    "❌ Sem permissão",
+                    "Não consegui desmutar esse usuário — confira minhas permissões."
+                )
             )
 
 

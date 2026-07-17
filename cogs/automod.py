@@ -270,6 +270,9 @@ class ModalAdicionarPalavra(Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
 
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
+
         conf = config(self.cog.dados, interaction.guild.id)
 
         novas = [
@@ -375,6 +378,9 @@ class SelecionarCanalAutomod(ChannelSelect):
 
     async def callback(self, interaction: discord.Interaction):
 
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
+
         canal_selecionado = self.values[0]
 
         canal = interaction.guild.get_channel(canal_selecionado.id)
@@ -436,11 +442,17 @@ class PainelAutomodView(View):
     @discord.ui.button(label="➕ Adicionar Palavra", style=discord.ButtonStyle.success, row=1, custom_id="automod_add_palavra")
     async def adicionar(self, interaction: discord.Interaction, button: Button):
 
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
+
         await interaction.response.send_modal(ModalAdicionarPalavra(self.cog))
 
 
     @discord.ui.button(label="🗑️ Remover Palavra", style=discord.ButtonStyle.danger, row=1, custom_id="automod_remove_palavra")
     async def remover(self, interaction: discord.Interaction, button: Button):
+
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
 
         conf = config(self.cog.dados, interaction.guild.id)
 
@@ -454,6 +466,9 @@ class PainelAutomodView(View):
     @discord.ui.button(label="🟢 Ativar", style=discord.ButtonStyle.success, row=2, custom_id="automod_ativar_btn")
     async def ativar(self, interaction: discord.Interaction, button: Button):
 
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
+
         conf = config(self.cog.dados, interaction.guild.id)
         conf["ativo"] = True
         self.cog.salvar()
@@ -465,6 +480,9 @@ class PainelAutomodView(View):
 
     @discord.ui.button(label="🔴 Desativar", style=discord.ButtonStyle.danger, row=2, custom_id="automod_desativar_btn")
     async def desativar(self, interaction: discord.Interaction, button: Button):
+
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("🚫 Você precisa ser Administrador para usar isso.", ephemeral=True)
 
         conf = config(self.cog.dados, interaction.guild.id)
         conf["ativo"] = False

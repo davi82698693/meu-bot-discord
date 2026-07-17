@@ -38,6 +38,31 @@ def salvar_tickets_abertos(dados):
         print(f"⚠️ Erro ao salvar tickets_abertos.json: {e}")
 
 
+CONFIG_FILE = os.path.join(DATA_DIR, "tickets_config.json")
+
+
+def carregar_config():
+    if not os.path.exists(CONFIG_FILE):
+        return {}
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def salvar_config(dados):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ Erro ao salvar tickets_config.json: {e}")
+
+
+def config_guild(dados, guild_id):
+    return dados.setdefault(str(guild_id), {"categoria_id": None})
+
+
 # ==========================================================
 # CONFIGURAÇÕES
 # ==========================================================
@@ -319,6 +344,27 @@ class Tickets(commands.Cog):
     # REENVIAR / RECRIAR O PAINEL MANUALMENTE
     # ======================================================
 
+    @commands.hybrid_command(name="tickets-categoria")
+    @commands.has_permissions(manage_guild=True)
+    async def tickets_categoria(self, ctx):
+
+        conf = carregar_config()
+
+        atual_id = config_guild(conf, ctx.guild.id).get("categoria_id")
+
+        atual = ctx.guild.get_channel(atual_id) if atual_id else None
+
+        await ctx.send(
+            embed=criar_embed(
+                "📂 Categoria dos Tickets",
+                f"Categoria atual: {atual.mention if atual else '`Nenhuma (usa a categoria do painel)`'}\n\n"
+                "Escolha abaixo em qual categoria os tickets devem ser criados.",
+                discord.Color.blurple()
+            ),
+            view=SelecionarCategoriaTicketsView()
+        )
+
+
     @commands.hybrid_command(name="painel-ticket", aliases=["painel-tickets"])
     @commands.has_permissions(manage_guild=True)
     async def painel_ticket(self, ctx, canal: discord.TextChannel = None):
@@ -396,6 +442,75 @@ class Tickets(commands.Cog):
 # ==========================================================
 # PAINEL DE BOTÕES
 # ==========================================================
+
+class SelecionarCategoriaTickets(discord.ui.ChannelSelect):
+
+    def __init__(self):
+
+        super().__init__(
+            placeholder="Escolha a categoria dos tickets",
+            channel_types=[discord.ChannelType.category]
+        )
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        categoria_selecionada = self.values[0]
+
+        categoria = interaction.guild.get_channel(categoria_selecionada.id)
+
+        if categoria is None:
+            categoria = categoria_selecionada.resolve()
+
+        if categoria is None:
+            categoria = await interaction.guild.fetch_channel(categoria_selecionada.id)
+
+        conf = carregar_config()
+        config_guild(conf, interaction.guild.id)["categoria_id"] = categoria.id
+        salvar_config(conf)
+
+        await interaction.response.edit_message(
+            embed=criar_embed(
+                "✅ Categoria definida",
+                f"Os tickets agora são criados dentro de **{categoria.name}**.",
+                discord.Color.green()
+            ),
+            view=None
+        )
+
+
+class SelecionarCategoriaTicketsView(View):
+
+    def __init__(self):
+
+        super().__init__(timeout=120)
+
+        self.add_item(SelecionarCategoriaTickets())
+
+
+    async def interaction_check(self, interaction: discord.Interaction):
+
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message("🚫 Você precisa de permissão de Gerenciar Servidor para usar isso.", ephemeral=True)
+            return False
+
+        return True
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO SelecionarCategoriaTicketsView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("=================================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
 
 class PainelTickets(View):
 
@@ -528,10 +643,19 @@ async def criar_ticket(
 
 
     # ----------------------------------
-    # PEGAR CATEGORIA (mesma do canal do painel)
+    # PEGAR CATEGORIA (configurada > mesma do painel > nome fixo)
     # ----------------------------------
 
-    categoria = interaction.channel.category
+    categoria = None
+
+    conf_tickets = carregar_config()
+    categoria_id = config_guild(conf_tickets, guild.id).get("categoria_id")
+
+    if categoria_id:
+        categoria = guild.get_channel(categoria_id)
+
+    if categoria is None:
+        categoria = interaction.channel.category
 
     if categoria is None:
 

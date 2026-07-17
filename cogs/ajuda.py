@@ -175,6 +175,7 @@ CATEGORIAS = {
             ("!setup-tickets", "Cria/verifica cargos, categoria, canal de logs e o painel de tickets."),
             ("🎫・suporte", "Painel fixo no canal — clique em Dúvidas, Suporte ou Denúncias para abrir um ticket."),
             ("!painel-ticket [#canal]", "Reenvia/recria o painel de tickets (no canal atual ou no indicado)."),
+            ("!tickets-categoria", "Escolhe em qual categoria os tickets são criados."),
             ("🟢 Assumir Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
             ("📢 Chamar Staff", "Botão dentro do ticket — notifica a equipe."),
             ("👤 Chamar Membro", "Botão dentro do ticket — apenas Staff/Suporte."),
