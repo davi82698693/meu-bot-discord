@@ -34,6 +34,11 @@ from discord.ext import commands, tasks
 
 log = logging.getLogger(__name__)
 
+# Coloque False aqui pra deixar esse arquivo inativo: o bot vai carregar a
+# extensão sem erro, mas o cog não é registrado e os comandos !rainbow não
+# ficam disponíveis. Volte pra True quando quiser reativar.
+ATIVO = False
+
 # --- Configuração do throttling adaptativo -------------------------------
 # Se uma chamada demorar mais que INTERVALO_ATUAL * este fator (respeitando um
 # mínimo absoluto abaixo), entendemos que o Discord nos limitou (a lib fica
@@ -191,4 +196,7 @@ class RainbowRole(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
+    if not ATIVO:
+        log.info("rainbow_role: arquivo inativo (ATIVO=False), cog não carregado.")
+        return
     await bot.add_cog(RainbowRole(bot))
