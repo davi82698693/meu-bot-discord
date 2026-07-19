@@ -176,10 +176,85 @@ CATEGORIAS = {
             ("🎫・suporte", "Painel fixo no canal — clique em Dúvidas, Suporte ou Denúncias para abrir um ticket."),
             ("!painel-ticket [#canal]", "Reenvia/recria o painel de tickets (no canal atual ou no indicado)."),
             ("!tickets-categoria", "Escolhe em qual categoria os tickets são criados."),
+            ("!tickets-cargo-atendente", "Escolhe qual cargo pode ver/assumir/fechar tickets."),
             ("🟢 Assumir Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
             ("📢 Chamar Staff", "Botão dentro do ticket — notifica a equipe."),
             ("👤 Chamar Membro", "Botão dentro do ticket — apenas Staff/Suporte."),
             ("🔒 Fechar Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
+        ]
+    },
+
+    "conquistas": {
+        "nome": "🏆 Conquistas",
+        "descricao": "Badges desbloqueadas automaticamente ao atingir marcos no servidor.",
+        "comandos": [
+            ("!conquistas [@user]", "Mostra as conquistas de alguém."),
+            ("!conquistas-ranking", "Top 10 com mais conquistas."),
+        ]
+    },
+
+    "salasvoz": {
+        "nome": "🔊 Salas de Voz Temporárias",
+        "descricao": "Entrar no canal gatilho cria uma sala só sua, que some quando esvazia.",
+        "comandos": [
+            ("!salasvoz-painel", "Escolhe o canal de voz gatilho (Administrador)."),
+        ]
+    },
+
+    "cosmeticos": {
+        "nome": "✨ Loja de Cosméticos",
+        "descricao": "Compre cargos especiais usando as moedas do sistema de jogos.",
+        "comandos": [
+            ("!loja-cosmeticos", "Mostra a loja e permite comprar itens."),
+            ("!cosmeticos-admin", "Cadastra/remove itens à venda (Administrador)."),
+        ]
+    },
+
+    "drops": {
+        "nome": "💰 Drops",
+        "descricao": "Baús de moedas caem aleatoriamente no chat, quem clica primeiro leva.",
+        "comandos": [
+            ("!drops-painel", "Configura canal, intervalo e valor dos baús (Administrador)."),
+        ]
+    },
+
+    "parcerias": {
+        "nome": "🤝 Parcerias",
+        "descricao": "Outros servidores pedem parceria, você aprova/recusa, publica automaticamente.",
+        "comandos": [
+            ("!parcerias-painel", "Envia o botão de pedir parceria neste canal."),
+            ("!parcerias-canal-pedidos #canal", "Define onde os pedidos aparecem pra staff avaliar."),
+            ("!parcerias-canal-publicar #canal", "Define onde parcerias aprovadas são publicadas."),
+        ]
+    },
+
+    "convites": {
+        "nome": "📨 Convites",
+        "descricao": "Veja quem convidou quem pro servidor.",
+        "comandos": [
+            ("!convites [@user]", "Quantos membros essa pessoa trouxe."),
+            ("!convites-ranking", "Top 10 quem mais convidou."),
+        ]
+    },
+
+    "aniversarios": {
+        "nome": "🎂 Aniversários",
+        "descricao": "Cadastre seu aniversário e receba parabéns automático no dia.",
+        "comandos": [
+            ("!aniversario DD/MM", "Define seu aniversário."),
+            ("!aniversario", "Mostra o que você já definiu."),
+            ("!aniversarios-canal #canal", "Define onde os parabéns aparecem (Administrador)."),
+            ("!aniversarios-lista", "Lista todo mundo cadastrado."),
+        ]
+    },
+
+    "backup": {
+        "nome": "💾 Backup",
+        "descricao": "Exporte ou restaure todos os dados configurados do bot.",
+        "comandos": [
+            ("!backup", "Gera um .zip com todos os dados (Administrador)."),
+            ("!restore", "Restaura a partir de um .zip anexado, só via ! (Administrador)."),
+            ("!stats", "Dashboard com estatísticas do servidor e do bot."),
         ]
     },
 
