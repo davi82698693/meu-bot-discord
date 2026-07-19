@@ -143,6 +143,17 @@ def eh_staff(member):
         return True
 
 
+    conf = carregar_config()
+    cargo_configurado_id = config_guild(conf, member.guild.id).get("cargo_atendente_id")
+
+    if cargo_configurado_id:
+
+        ids_cargos = [cargo.id for cargo in member.roles]
+
+        if cargo_configurado_id in ids_cargos:
+            return True
+
+
     cargos = [
         cargo.name
         for cargo in member.roles
@@ -344,6 +355,27 @@ class Tickets(commands.Cog):
     # REENVIAR / RECRIAR O PAINEL MANUALMENTE
     # ======================================================
 
+    @commands.hybrid_command(name="tickets-cargo-atendente")
+    @commands.has_permissions(manage_guild=True)
+    async def tickets_cargo_atendente(self, ctx):
+
+        conf = carregar_config()
+
+        atual_id = config_guild(conf, ctx.guild.id).get("cargo_atendente_id")
+
+        atual = ctx.guild.get_role(atual_id) if atual_id else None
+
+        await ctx.send(
+            embed=criar_embed(
+                "🛡️ Cargo Atendente dos Tickets",
+                f"Cargo atual: {atual.mention if atual else '`Nenhum (usa os cargos padrão 🛡️ Staff / 🛠️ Suporte)`'}\n\n"
+                "Escolha abaixo qual cargo pode ver, assumir e fechar tickets.",
+                discord.Color.blurple()
+            ),
+            view=SelecionarCargoAtendenteView()
+        )
+
+
     @commands.hybrid_command(name="tickets-categoria")
     @commands.has_permissions(manage_guild=True)
     async def tickets_categoria(self, ctx):
@@ -442,6 +474,69 @@ class Tickets(commands.Cog):
 # ==========================================================
 # PAINEL DE BOTÕES
 # ==========================================================
+
+class SelecionarCargoAtendente(discord.ui.RoleSelect):
+
+    def __init__(self):
+
+        super().__init__(
+            placeholder="Escolha o cargo que atende os tickets"
+        )
+
+
+    async def callback(self, interaction: discord.Interaction):
+
+        cargo = self.values[0]
+
+        if cargo.managed:
+            return await interaction.response.send_message("❌ Esse cargo é gerenciado automaticamente e não pode ser usado.", ephemeral=True)
+
+        conf = carregar_config()
+        config_guild(conf, interaction.guild.id)["cargo_atendente_id"] = cargo.id
+        salvar_config(conf)
+
+        await interaction.response.edit_message(
+            embed=criar_embed(
+                "✅ Cargo definido",
+                f"{cargo.mention} agora pode ver, assumir e fechar tickets.",
+                discord.Color.green()
+            ),
+            view=None
+        )
+
+
+class SelecionarCargoAtendenteView(View):
+
+    def __init__(self):
+
+        super().__init__(timeout=120)
+
+        self.add_item(SelecionarCargoAtendente())
+
+
+    async def interaction_check(self, interaction: discord.Interaction):
+
+        if not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message("🚫 Você precisa de permissão de Gerenciar Servidor para usar isso.", ephemeral=True)
+            return False
+
+        return True
+
+
+    async def on_error(self, interaction, error, item):
+        import traceback
+        print("========== ERRO NO SelecionarCargoAtendenteView ==========")
+        traceback.print_exception(type(error), error, error.__traceback__)
+        print("===============================================================")
+        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(msg, ephemeral=True)
+        except Exception:
+            pass
+
 
 class SelecionarCategoriaTickets(discord.ui.ChannelSelect):
 
@@ -736,6 +831,28 @@ async def criar_ticket(
             read_message_history=True
 
         )
+
+
+    conf_tickets = carregar_config()
+    cargo_atendente_id = config_guild(conf_tickets, guild.id).get("cargo_atendente_id")
+
+    if cargo_atendente_id:
+
+        cargo_atendente = guild.get_role(cargo_atendente_id)
+
+        if cargo_atendente:
+
+            permissoes[cargo_atendente] = discord.PermissionOverwrite(
+
+                view_channel=True,
+
+                send_messages=True,
+
+                manage_channels=True,
+
+                read_message_history=True
+
+            )
 
 
 

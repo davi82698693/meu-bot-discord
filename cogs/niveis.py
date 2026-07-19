@@ -163,6 +163,19 @@ class Niveis(commands.Cog):
             except Exception:
                 pass
 
+            conquistas = self.bot.get_cog("Conquistas")
+
+            if conquistas is not None:
+
+                marco = {10: "nivel_10", 25: "nivel_25", 50: "nivel_50"}.get(usuario["nivel"])
+
+                if marco:
+
+                    try:
+                        await conquistas.desbloquear(message.author, marco, canal_para_avisar=message.channel)
+                    except Exception:
+                        pass
+
 
     @commands.hybrid_command(name="rank", aliases=["nivel", "level"])
     async def rank(self, ctx, membro: discord.Member = None):

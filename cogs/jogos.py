@@ -178,6 +178,17 @@ class Jogos(commands.Cog):
             )
         )
 
+        if self.saldo(membro.id) >= 1_000_000:
+
+            conquistas = self.bot.get_cog("Conquistas")
+
+            if conquistas is not None:
+
+                try:
+                    await conquistas.desbloquear(membro, "rico", canal_para_avisar=ctx.channel)
+                except Exception:
+                    pass
+
 
     @commands.hybrid_command(name="diario")
     async def diario(self, ctx):
@@ -446,6 +457,15 @@ class Jogos(commands.Cog):
                 f"[ {linha} ]\n💰 Três iguais! Ganhou {fmt(premio)} (x10)\nSaldo: {fmt(self.saldo(ctx.author.id))}",
                 discord.Color.gold()
             )
+
+            conquistas = self.bot.get_cog("Conquistas")
+
+            if conquistas is not None:
+
+                try:
+                    await conquistas.desbloquear(ctx.author, "sortudo", canal_para_avisar=ctx.channel)
+                except Exception:
+                    pass
 
         elif len(set(resultado)) == 2:
 

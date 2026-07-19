@@ -1278,6 +1278,18 @@ class AprovarView(View):
             discord.Color.green()
         )
 
+        conquistas = interaction.client.get_cog("Conquistas")
+
+        if conquistas and guild:
+
+            try:
+                membro_comprador = guild.get_member(comprador_id)
+
+                if membro_comprador:
+                    await conquistas.desbloquear(membro_comprador, "primeira_compra", canal_para_avisar=interaction.channel)
+            except Exception:
+                pass
+
         cargo_cliente_id = cog.dados["config"].get("cargo_cliente")
 
         if cargo_cliente_id and guild:
@@ -1493,6 +1505,15 @@ class ModalAvaliacao(Modal):
             "✅ Obrigado pela avaliação!",
             ephemeral=True
         )
+
+        conquistas = interaction.client.get_cog("Conquistas")
+
+        if conquistas is not None:
+
+            try:
+                await conquistas.desbloquear(interaction.user, "avaliador", canal_para_avisar=None)
+            except Exception:
+                pass
 
 
 class AvaliarView(View):

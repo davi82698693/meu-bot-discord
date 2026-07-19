@@ -152,6 +152,17 @@ class Convites(commands.Cog):
 
         self.salvar()
 
+        if conf["contagem"][inviter_id] >= 5:
+
+            conquistas = self.bot.get_cog("Conquistas")
+
+            if conquistas is not None:
+
+                try:
+                    await conquistas.desbloquear(convite_usado.inviter, "convidador", canal_para_avisar=None)
+                except Exception:
+                    pass
+
 
     @commands.hybrid_command(name="convites")
     async def convites_cmd(self, ctx, membro: discord.Member = None):
