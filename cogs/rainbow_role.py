@@ -35,9 +35,11 @@ from discord.ext import commands, tasks
 log = logging.getLogger(__name__)
 
 # --- Configuração do throttling adaptativo -------------------------------
-# Se uma chamada demorar mais que INTERVALO_ATUAL * este fator, entendemos
-# que o Discord nos limitou (a lib fica esperando por dentro do await).
+# Se uma chamada demorar mais que INTERVALO_ATUAL * este fator (respeitando um
+# mínimo absoluto abaixo), entendemos que o Discord nos limitou (a lib fica
+# esperando por dentro do await).
 FATOR_DETECCAO_LIMITE = 2.0
+LIMITE_MINIMO_SEGUNDOS = 1.5  # evita confundir latência normal de rede com rate limit
 # Depois de desacelerar, espera esse tempo sem novos limites antes de
 # tentar acelerar de novo (evita ficar batendo no limite repetidamente).
 COOLDOWN_SEGUNDOS = 20.0
@@ -117,7 +119,7 @@ class RainbowRole(commands.Cog):
                 self.hues[role.id] = (hue + 0.05) % 1.0
                 duracao = time.monotonic() - inicio
 
-                if duracao > self.intervalo_atual[role.id] * FATOR_DETECCAO_LIMITE:
+                if duracao > max(LIMITE_MINIMO_SEGUNDOS, self.intervalo_atual[role.id] * FATOR_DETECCAO_LIMITE):
                     # A chamada demorou muito mais que o esperado: provavelmente
                     # a lib ficou esperando um rate limit por dentro do await.
                     self._desacelerar(rainbow_loop, role.id, duracao)
