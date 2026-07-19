@@ -193,7 +193,7 @@ class SelecionarItemComprar(Select):
         if not opcoes:
             opcoes = [discord.SelectOption(label="Nenhum item disponível", value="dummy")]
 
-        super().__init__(placeholder="🛍️ Escolha um item pra comprar", options=opcoes, row=0)
+        super().__init__(placeholder="🛍️ Escolha um item pra comprar", options=opcoes, row=0, custom_id="cosmeticos_comprar_select")
 
 
     async def callback(self, interaction: discord.Interaction):
