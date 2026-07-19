@@ -76,15 +76,6 @@ CATEGORIAS = {
         ]
     },
 
-    "rainbow": {
-        "nome": "🌈 Rainbow Role",
-        "descricao": "Faz um cargo mudar de cor continuamente, criando um efeito arco-íris (Gerenciar Cargos).",
-        "comandos": [
-            ("!rainbow start @Cargo [segundos]", "Inicia o efeito rainbow no cargo (padrão: troca a cada 10s)."),
-            ("!rainbow stop @Cargo", "Para o efeito rainbow no cargo."),
-        ]
-    },
-
     "boasvindas": {
         "nome": "👋 Boas-vindas",
         "descricao": "Mensagens de entrada/saída com visual pronto. Configuração 100% por painel.",
