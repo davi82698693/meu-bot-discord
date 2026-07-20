@@ -135,6 +135,16 @@ CATEGORIAS = {
         ]
     },
 
+    "loja-robux": {
+        "nome": "🎮 Loja Robux",
+        "descricao": "Compra de Robux com cálculo automático de valor e gamepass. Configurar o preço exige Administrador.",
+        "comandos": [
+            ("🎮 Comprar Robux", "Botão do painel — pede seu nick do Roblox, quantidade e se é com ou sem taxa, e já manda o pagamento."),
+            ("!loja-robux-preco <valor> [taxa]", "Define o preço de 1.000 Robux em R$ e a taxa da gamepass (padrão 30%)."),
+            ("!loja-robux-painel", "Envia o painel público de compra de Robux no canal atual."),
+        ]
+    },
+
     "moderacao": {
         "nome": "🛡️ Moderação",
         "descricao": "Comandos para manter o servidor organizado e seguro.",

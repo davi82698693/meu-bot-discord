@@ -1,6 +1,7 @@
 import discord
 import os
 import json
+import math
 import random
 import time
 import asyncio
@@ -249,6 +250,56 @@ def _validar_nick_roblox(nick: str):
     return None
 
 
+def embed_robux_painel():
+    """Embed público explicando o funcionamento da compra de Robux."""
+
+    return embed_padrao(
+        "🎮 Compre Robux",
+        (
+            "Clique no botão abaixo para comprar Robux.\n\n"
+            "Você vai precisar informar:\n"
+            "🧍 Seu **nick do Roblox** (o nick de **criação da conta**, não o nick de exibição)\n"
+            "🔢 A **quantidade de Robux** desejada\n\n"
+            "Depois é só escolher se a entrega vai ser:\n"
+            "💸 **Com taxa** — via Gamepass (o Roblox desconta uma taxa, então a gamepass "
+            "é criada com um valor um pouco maior que os Robux que você recebe)\n"
+            "🎁 **Sem taxa** — via grupo/trade, sem desconto extra\n\n"
+            "O valor a pagar em R$ é calculado automaticamente. 👇"
+        ),
+        discord.Color.gold()
+    )
+
+
+def formatar_valor_brl(valor):
+    """Formata um float no padrão brasileiro (vírgula decimal), igual ao resto da loja."""
+
+    return f"{valor:.2f}".replace(".", ",")
+
+
+def calcular_valores_robux(cog, quantidade, com_taxa):
+    """
+    Retorna (valor_reais, valor_gamepass) para uma compra de Robux, ou
+    (None, None) se o preço ainda não foi configurado pelo dono da loja.
+    """
+
+    preco_k = cog.dados["config"].get("robux_preco_k")
+
+    if not preco_k:
+        return None, None
+
+    taxa_percentual = cog.dados["config"].get("robux_taxa_percentual", 30)
+
+    valor_reais = (quantidade / 1000) * preco_k
+
+    if com_taxa:
+        fator = 1 - (taxa_percentual / 100)
+        valor_gamepass = math.ceil(quantidade / fator)
+    else:
+        valor_gamepass = quantidade
+
+    return valor_reais, valor_gamepass
+
+
 
 # ==========================================================
 # COG
@@ -276,6 +327,9 @@ class Loja(commands.Cog):
 
         # registra os painéis de administração (nunca expiram)
         self.bot.add_view(PainelAdminView(self))
+
+        # registra o painel de compra de Robux (nunca expira)
+        self.bot.add_view(RobuxPainelView(self))
         self.bot.add_view(ModelosView(self))
 
         # reregistra views de pedidos em andamento
@@ -713,6 +767,60 @@ class Loja(commands.Cog):
 
 
     # ======================================================
+    # CONFIGURAR PREÇO DO ROBUX
+    # ======================================================
+
+    @app_commands.describe(
+        preco_k="Valor em R$ de 1.000 Robux (ex: 5.50)",
+        taxa="Taxa % da gamepass (padrão do Roblox é 30, pode deixar em branco)"
+    )
+    @commands.hybrid_command(name="loja-robux-preco")
+    async def loja_robux_preco(self, ctx, preco_k: str, taxa: str = None):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Apenas os donos da loja podem usar isso.", discord.Color.red())
+            )
+
+        try:
+            preco = float(preco_k.strip().replace(",", "."))
+            if preco <= 0:
+                raise ValueError
+        except ValueError:
+            return await ctx.send(
+                embed=embed_padrao("❌ Valor inválido", "Use um número válido, ex: `!loja-robux-preco 5.50`", discord.Color.red())
+            )
+
+        taxa_valor = self.dados["config"].get("robux_taxa_percentual", 30)
+
+        if taxa is not None:
+
+            try:
+                taxa_valor = float(taxa.strip().replace(",", ".").replace("%", ""))
+
+                if not (0 <= taxa_valor < 100):
+                    raise ValueError
+
+            except ValueError:
+                return await ctx.send(
+                    embed=embed_padrao("❌ Taxa inválida", "Use um número entre 0 e 99, ex: `30`", discord.Color.red())
+                )
+
+        self.dados["config"]["robux_preco_k"] = preco
+        self.dados["config"]["robux_taxa_percentual"] = taxa_valor
+
+        self.salvar()
+
+        await ctx.send(
+            embed=embed_padrao(
+                "✅ Robux configurado",
+                f"💰 Preço por 1.000 Robux: **R$ {formatar_valor_brl(preco)}**\n🎫 Taxa da Gamepass: **{taxa_valor:.0f}%**",
+                discord.Color.green()
+            )
+        )
+
+
+    # ======================================================
     # ENVIAR PAINEL
     # ======================================================
 
@@ -738,6 +846,26 @@ class Loja(commands.Cog):
             ),
             view=SelecionarProdutosPainelView(self)
         )
+
+
+    @commands.hybrid_command(name="loja-robux-painel")
+    async def loja_robux_painel(self, ctx):
+
+        if not await self._checar_dono(ctx):
+            return await ctx.send(
+                embed=embed_padrao("🚫 Sem permissão", "Você precisa ser Administrador para usar isso.", discord.Color.red())
+            )
+
+        if not self.dados["config"].get("robux_preco_k"):
+            return await ctx.send(
+                embed=embed_padrao(
+                    "❌ Robux não configurado",
+                    "Defina o preço primeiro com `!loja-robux-preco <valor>` ou pelo botão **🎮 Configurar Robux** no `!loja-admin`.",
+                    discord.Color.red()
+                )
+            )
+
+        await ctx.send(embed=embed_robux_painel(), view=RobuxPainelView(self))
 
 
     @commands.hybrid_command(name="loja-modelos")
@@ -1211,6 +1339,298 @@ async def iniciar_compra(cog, interaction: discord.Interaction, produto_id, nick
 
 
 # ==========================================================
+# SISTEMA DE LOJA DE ROBUX
+# ==========================================================
+
+class ModalConfigRobux(Modal, title="🎮 Configurar Robux"):
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=300)
+
+        self.cog = cog
+
+        preco_atual = cog.dados["config"].get("robux_preco_k")
+        taxa_atual = cog.dados["config"].get("robux_taxa_percentual", 30)
+
+        self.preco_k = TextInput(
+            label="Preço de 1.000 Robux (R$)",
+            placeholder="Ex: 5.50",
+            default=f"{preco_atual}" if preco_atual else None,
+            max_length=10
+        )
+
+        self.taxa = TextInput(
+            label="Taxa da Gamepass (%) — padrão: 30",
+            placeholder="Ex: 30",
+            default=f"{taxa_atual}",
+            required=False,
+            max_length=5
+        )
+
+        self.add_item(self.preco_k)
+        self.add_item(self.taxa)
+
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        try:
+            preco = float(self.preco_k.value.strip().replace(",", "."))
+
+            if preco <= 0:
+                raise ValueError
+
+        except ValueError:
+            return await interaction.response.send_message(
+                "❌ Digite um preço válido para 1.000 Robux (ex: `5.50`).",
+                ephemeral=True
+            )
+
+        taxa_valor = self.cog.dados["config"].get("robux_taxa_percentual", 30)
+        taxa_bruta = (self.taxa.value or "").strip().replace(",", ".").replace("%", "")
+
+        if taxa_bruta:
+
+            try:
+                taxa_valor = float(taxa_bruta)
+
+                if not (0 <= taxa_valor < 100):
+                    raise ValueError
+
+            except ValueError:
+                return await interaction.response.send_message(
+                    "❌ Digite uma taxa válida entre 0 e 99 (ex: `30`).",
+                    ephemeral=True
+                )
+
+        self.cog.dados["config"]["robux_preco_k"] = preco
+        self.cog.dados["config"]["robux_taxa_percentual"] = taxa_valor
+
+        self.cog.salvar()
+
+        await interaction.response.send_message(
+            embed=embed_padrao(
+                "✅ Robux configurado",
+                (
+                    f"💰 **Preço por 1.000 Robux:** R$ {formatar_valor_brl(preco)}\n"
+                    f"🎫 **Taxa da Gamepass:** {taxa_valor:.0f}%\n\n"
+                    "Use o botão **📤 Enviar Painel Robux Aqui** para publicar o painel de compra."
+                ),
+                discord.Color.green()
+            ),
+            ephemeral=True
+        )
+
+
+class RobuxPainelView(View):
+    """View persistente com o botão público de compra de Robux."""
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=None)
+
+        self.cog = cog
+
+
+    @discord.ui.button(label="🎮 Comprar Robux", style=discord.ButtonStyle.success, custom_id="loja_robux_comprar")
+    async def comprar(self, interaction: discord.Interaction, button: Button):
+
+        if not self.cog.dados["config"].get("robux_preco_k"):
+            return await interaction.response.send_message(
+                "❌ A compra de Robux ainda não foi configurada pela equipe. Tente novamente mais tarde.",
+                ephemeral=True
+            )
+
+        await interaction.response.send_modal(ModalRobuxPedido(self.cog))
+
+
+class ModalRobuxPedido(Modal, title="🎮 Comprar Robux"):
+
+    def __init__(self, cog):
+
+        super().__init__(timeout=300)
+
+        self.cog = cog
+
+        self.nick_roblox = TextInput(
+            label="Nick do Roblox",
+            placeholder="Nick de CRIAÇÃO da conta — não é o nick de exibição!",
+            max_length=20
+        )
+
+        self.quantidade = TextInput(
+            label="Quantidade de Robux",
+            placeholder="Ex: 500",
+            max_length=10
+        )
+
+        self.add_item(self.nick_roblox)
+        self.add_item(self.quantidade)
+
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        nick = self.nick_roblox.value.strip()
+
+        erro_nick = _validar_nick_roblox(nick)
+
+        if erro_nick:
+            return await interaction.response.send_message(f"❌ {erro_nick}", ephemeral=True)
+
+        qtd_bruta = self.quantidade.value.strip().replace(".", "").replace(",", "")
+
+        if not qtd_bruta.isdigit() or int(qtd_bruta) <= 0:
+            return await interaction.response.send_message(
+                "❌ Digite uma quantidade de Robux válida (só números, maior que zero).",
+                ephemeral=True
+            )
+
+        quantidade = int(qtd_bruta)
+
+        if quantidade > 1_000_000:
+            return await interaction.response.send_message(
+                "❌ Quantidade muito alta. Entre em contato com a equipe para pedidos grandes assim.",
+                ephemeral=True
+            )
+
+        valor_reais, _ = calcular_valores_robux(self.cog, quantidade, com_taxa=False)
+
+        if valor_reais is None:
+            return await interaction.response.send_message(
+                "❌ O preço do Robux ainda não foi configurado pela equipe. Tente novamente mais tarde.",
+                ephemeral=True
+            )
+
+        await interaction.response.send_message(
+            embed=embed_padrao(
+                "💳 Como vai ser a entrega?",
+                (
+                    f"🧍 **Nick:** `{nick}`\n"
+                    f"🔢 **Quantidade:** `{quantidade}` Robux\n\n"
+                    "**💸 Com taxa (Gamepass)** — você recebe via Gamepass. O Roblox desconta "
+                    "uma taxa, então a gamepass é criada com um valor um pouco maior que a "
+                    "quantidade de Robux que você recebe.\n\n"
+                    "**🎁 Sem taxa (Grupo/Trade)** — a entrega é feita sem essa taxa extra, "
+                    "e o valor combinado é o mesmo da quantidade de Robux pedida."
+                ),
+                discord.Color.blurple()
+            ),
+            view=EscolherTaxaView(self.cog, nick, quantidade),
+            ephemeral=True
+        )
+
+
+class EscolherTaxaView(View):
+
+    def __init__(self, cog, nick, quantidade):
+
+        super().__init__(timeout=180)
+
+        self.cog = cog
+        self.nick = nick
+        self.quantidade = quantidade
+
+
+    @discord.ui.button(label="💸 Com taxa (Gamepass)", style=discord.ButtonStyle.primary)
+    async def com_taxa(self, interaction: discord.Interaction, button: Button):
+
+        await iniciar_compra_robux(self.cog, interaction, self.nick, self.quantidade, com_taxa=True)
+
+
+    @discord.ui.button(label="🎁 Sem taxa (Grupo/Trade)", style=discord.ButtonStyle.secondary)
+    async def sem_taxa(self, interaction: discord.Interaction, button: Button):
+
+        await iniciar_compra_robux(self.cog, interaction, self.nick, self.quantidade, com_taxa=False)
+
+
+async def iniciar_compra_robux(cog, interaction: discord.Interaction, nick, quantidade, com_taxa):
+
+    pix_chave = cog.dados["config"].get("pix_chave")
+
+    if not pix_chave:
+        return await interaction.response.send_message(
+            "❌ O pagamento ainda não foi configurado pela equipe. Tente novamente mais tarde.",
+            ephemeral=True
+        )
+
+    valor_reais, valor_gamepass = calcular_valores_robux(cog, quantidade, com_taxa)
+
+    if valor_reais is None:
+        return await interaction.response.send_message(
+            "❌ O preço do Robux ainda não foi configurado pela equipe. Tente novamente mais tarde.",
+            ephemeral=True
+        )
+
+    pedido_id = str(random.randint(100000, 999999))
+
+    while pedido_id in cog.dados["pedidos"]:
+        pedido_id = str(random.randint(100000, 999999))
+
+    cog.dados["pedidos"][pedido_id] = {
+        "tipo": "robux",
+        "produto_nome": f"{quantidade} Robux",
+        "preco": formatar_valor_brl(valor_reais),
+        "comprador_id": interaction.user.id,
+        "nick_roblox": nick,
+        "quantidade_robux": quantidade,
+        "com_taxa": com_taxa,
+        "valor_gamepass": valor_gamepass,
+        "status": "aguardando_pagamento",
+        "criado_em": time.time(),
+        "guild_id": interaction.guild.id if interaction.guild else None,
+        "avaliado": False
+    }
+
+    cog.salvar()
+
+    tipo_label = "💸 Com taxa (Gamepass)" if com_taxa else "🎁 Sem taxa (Grupo/Trade)"
+
+    descricao = (
+        f"🧍 **Nick Roblox:** `{nick}`\n"
+        f"🔢 **Quantidade:** `{quantidade}` Robux\n"
+        f"📦 **Entrega:** {tipo_label}\n"
+        f"🎫 **Valor da Gamepass a criar:** `{valor_gamepass}` Robux\n"
+        f"💰 **Valor a pagar:** R$ {formatar_valor_brl(valor_reais)}\n\n"
+    )
+
+    if com_taxa:
+        descricao += (
+            f"⚠️ Crie uma **Gamepass** no valor de `{valor_gamepass}` Robux e tenha o link "
+            "em mãos — a equipe pode pedir depois de aprovar o pagamento.\n\n"
+        )
+
+    descricao += (
+        f"**Chave PIX (copia e cola):**\n```{pix_chave}```\n"
+        "Depois de pagar, clique no botão **✅ Já paguei** abaixo.\n"
+        "A confirmação será enviada aqui no privado assim que o pagamento for aprovado."
+    )
+
+    embed = discord.Embed(
+        title=f"🎮 Pedido #{pedido_id} — {quantidade} Robux",
+        description=descricao,
+        color=discord.Color.gold(),
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    embed.set_footer(text="Pagamento seguro via PIX • Sistema de Loja Robux")
+
+    view = PagamentoView(pedido_id)
+
+    arquivo = None
+
+    if cog.dados["config"].get("pix_qrcode") and os.path.exists(QRCODE_FILE):
+
+        arquivo = discord.File(QRCODE_FILE, filename="qrcode.png")
+
+        embed.set_image(url="attachment://qrcode.png")
+
+    if arquivo:
+        await interaction.response.send_message(embed=embed, view=view, file=arquivo, ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+# ==========================================================
 # BOTÃO "JÁ PAGUEI"
 # ==========================================================
 
@@ -1343,6 +1763,9 @@ class AprovarView(View):
                 view=None
             )
 
+        if pedido.get("tipo") == "robux":
+            return await self._aprovar_robux(interaction, cog, pedido)
+
         produto = cog.dados["produtos"].get(pedido["produto_id"])
 
         if produto is None or not produto["estoque"]:
@@ -1462,6 +1885,125 @@ class AprovarView(View):
                     title="⭐ Que tal avaliar sua compra?",
                     description=(
                         f"Deixe sua nota e comentário sobre **{pedido['produto_nome']}**. "
+                        "Isso ajuda muito a equipe e outros clientes!"
+                    ),
+                    color=discord.Color.gold()
+                ),
+                view=AvaliarView(self.pedido_id)
+            )
+
+        except Exception:
+            pass
+
+
+    async def _aprovar_robux(self, interaction: discord.Interaction, cog, pedido):
+        """Aprovação de pedidos de Robux (sem estoque/credencial, entrega manual pela equipe)."""
+
+        comprador_id = pedido["comprador_id"]
+
+        descricao_entrega = (
+            f"🧍 **Nick:** `{pedido['nick_roblox']}`\n"
+            f"🔢 **Quantidade:** `{pedido['quantidade_robux']}` Robux\n"
+        )
+
+        if pedido.get("com_taxa"):
+            descricao_entrega += f"🎫 **Gamepass:** `{pedido['valor_gamepass']}` Robux\n"
+
+        descricao_entrega += "\nSeu pagamento foi aprovado! Os Robux serão enviados em breve. 🎉"
+
+        entregue = False
+
+        try:
+            comprador = await interaction.client.fetch_user(comprador_id)
+
+            await comprador.send(
+                embed=discord.Embed(
+                    title="✅ Pagamento aprovado!",
+                    description=descricao_entrega,
+                    color=discord.Color.green(),
+                    timestamp=datetime.now(timezone.utc)
+                )
+            )
+
+            entregue = True
+
+        except Exception as e:
+            print(f"⚠️ Não consegui avisar o comprador {comprador_id}: {e}")
+
+        if not entregue:
+            return await interaction.response.send_message(
+                "⚠️ Não consegui mandar DM pro comprador (provavelmente ele tem DM de "
+                "membros do servidor desativada). Avise-o manualmente e depois faça a entrega.",
+                ephemeral=True
+            )
+
+        pedido["status"] = "aprovado"
+        cog.salvar()
+
+        instrucao_entrega = (
+            f"via Gamepass de `{pedido['valor_gamepass']}` Robux."
+            if pedido.get("com_taxa")
+            else "via grupo/trade, sem taxa adicional."
+        )
+
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                title="✅ Pedido de Robux aprovado",
+                description=(
+                    "Comprador avisado com sucesso.\n\n"
+                    f"🧍 **Nick:** `{pedido['nick_roblox']}`\n"
+                    f"🔢 **Enviar:** `{pedido['quantidade_robux']}` Robux — {instrucao_entrega}"
+                ),
+                color=discord.Color.green()
+            ),
+            view=None
+        )
+
+        guild = interaction.client.get_guild(pedido.get("guild_id"))
+
+        await enviar_log(
+            interaction.client,
+            guild,
+            (
+                f"✅ Pedido `{self.pedido_id}` (Robux) aprovado — `{pedido['quantidade_robux']}` "
+                f"Robux para o nick `{pedido['nick_roblox']}` (<@{comprador_id}>)."
+            ),
+            discord.Color.green()
+        )
+
+        conquistas = interaction.client.get_cog("Conquistas")
+
+        if conquistas and guild:
+
+            try:
+                membro_comprador = guild.get_member(comprador_id)
+
+                if membro_comprador:
+                    await conquistas.desbloquear(membro_comprador, "primeira_compra", canal_para_avisar=interaction.channel)
+            except Exception:
+                pass
+
+        cargo_cliente_id = cog.dados["config"].get("cargo_cliente")
+
+        if cargo_cliente_id and guild:
+
+            cargo_cliente = guild.get_role(cargo_cliente_id)
+
+            if cargo_cliente:
+
+                try:
+                    membro_comprador = guild.get_member(comprador_id) or await guild.fetch_member(comprador_id)
+                    await membro_comprador.add_roles(cargo_cliente, reason="Compra de Robux aprovada na loja")
+                except Exception as e:
+                    print(f"⚠️ Não consegui dar o cargo de cliente pra {comprador_id}: {e}")
+
+        try:
+
+            await comprador.send(
+                embed=discord.Embed(
+                    title="⭐ Que tal avaliar sua compra?",
+                    description=(
+                        f"Deixe sua nota e comentário sobre sua compra de **{pedido['quantidade_robux']} Robux**. "
                         "Isso ajuda muito a equipe e outros clientes!"
                     ),
                     color=discord.Color.gold()
@@ -1638,7 +2180,7 @@ class ModalAvaliacao(Modal):
 
         avaliacao = {
             "pedido_id": self.pedido_id,
-            "produto_id": pedido["produto_id"],
+            "produto_id": pedido.get("produto_id"),
             "produto_nome": pedido["produto_nome"],
             "comprador_id": pedido["comprador_id"],
             "nota": nota,
@@ -2616,6 +3158,30 @@ class PainelAdminView(View):
         )
 
         await interaction.response.send_message(view=container_view(texto, ModelosView(self.cog)), ephemeral=True)
+
+
+    @discord.ui.button(label="🎮 Configurar Robux", style=discord.ButtonStyle.primary, row=4, custom_id="loja_admin_config_robux")
+    async def config_robux(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.send_modal(
+            ModalConfigRobux(self.cog)
+        )
+
+
+    @discord.ui.button(label="📤 Enviar Painel Robux Aqui", style=discord.ButtonStyle.success, row=4, custom_id="loja_admin_enviar_robux")
+    async def enviar_painel_robux(self, interaction: discord.Interaction, button: Button):
+
+        if not self.cog.dados["config"].get("robux_preco_k"):
+
+            return await interaction.response.send_message(
+                "❌ Configure o preço do Robux primeiro (botão 🎮 Configurar Robux).",
+                ephemeral=True
+            )
+
+        await interaction.response.send_message(
+            embed=embed_robux_painel(),
+            view=RobuxPainelView(self.cog)
+        )
 
 
 
