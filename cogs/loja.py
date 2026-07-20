@@ -232,6 +232,23 @@ def container_view(texto, source_view, accent_color=discord.Color.gold()):
     return layout
 
 
+def _validar_nick_roblox(nick: str):
+    """
+    Validação simples de nick do Roblox: 3 a 20 caracteres, só letras,
+    números e underscore. Retorna None se válido, ou uma mensagem de erro.
+    """
+
+    nick = nick.strip()
+
+    if not (3 <= len(nick) <= 20):
+        return "O nick precisa ter entre 3 e 20 caracteres."
+
+    if not all(c.isalnum() or c == "_" for c in nick):
+        return "O nick só pode ter letras, números e underscore ( _ )."
+
+    return None
+
+
 
 # ==========================================================
 # COG
@@ -990,7 +1007,16 @@ class LojaSelect(Select):
                 ephemeral=True
             )
 
-        await iniciar_compra(self.cog, interaction, produto_id)
+        produto = self.cog.dados["produtos"].get(produto_id)
+
+        if produto is None or not produto["estoque"]:
+            return await interaction.response.send_message(
+                "❌ Esse produto está esgotado ou não existe mais. Atualize o painel e tente outro.",
+                ephemeral=True
+            )
+
+        # Abre o carrinho: primeiro pede o nick do Roblox antes de gerar o pagamento.
+        await interaction.response.send_modal(ModalCarrinho(self.cog, produto_id))
 
 
 class LojaPainelView(View):
@@ -1003,10 +1029,107 @@ class LojaPainelView(View):
 
 
 # ==========================================================
+# CARRINHO (nick do Roblox + resumo do pedido antes de pagar)
+# ==========================================================
+
+class ModalCarrinho(Modal):
+    """Primeiro passo do carrinho: pede o nick do Roblox pra vincular à conta comprada."""
+
+    def __init__(self, cog, produto_id):
+
+        super().__init__(title="🛒 Finalizar Pedido")
+
+        self.cog = cog
+        self.produto_id = produto_id
+
+        self.nick_roblox = TextInput(
+            label="Seu nick no Roblox",
+            placeholder="Ex: JoaoBuilder123",
+            min_length=3,
+            max_length=20
+        )
+
+        self.add_item(self.nick_roblox)
+
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        produto = self.cog.dados["produtos"].get(self.produto_id)
+
+        if produto is None or not produto["estoque"]:
+            return await interaction.response.send_message(
+                "❌ Esse produto ficou indisponível enquanto você preenchia o formulário. Tente outro.",
+                ephemeral=True
+            )
+
+        nick = self.nick_roblox.value.strip()
+
+        erro = _validar_nick_roblox(nick)
+
+        if erro:
+            return await interaction.response.send_message(f"❌ {erro}", ephemeral=True)
+
+        embed = discord.Embed(
+            title="🛒 Resumo do seu Carrinho",
+            description="Confira os dados abaixo antes de seguir para o pagamento.",
+            color=discord.Color.blurple(),
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        embed.add_field(name="🎁 Produto", value=produto["nome"], inline=True)
+        embed.add_field(name="💰 Valor", value=f"R$ {produto['preco']}", inline=True)
+        embed.add_field(name="🧍 Nick no Roblox", value=f"`{nick}`", inline=False)
+        embed.set_footer(text="Verifique se o nick está certo — é ele que vai ser vinculado à conta entregue.")
+
+        if interaction.user.display_avatar:
+            embed.set_thumbnail(url=interaction.user.display_avatar.url)
+
+        await interaction.response.send_message(
+            embed=embed,
+            view=ConfirmarCarrinhoView(self.cog, self.produto_id, nick),
+            ephemeral=True
+        )
+
+
+class ConfirmarCarrinhoView(View):
+    """Segundo passo do carrinho: confirmar ou cancelar antes de gerar o PIX."""
+
+    def __init__(self, cog, produto_id, nick_roblox):
+
+        super().__init__(timeout=120)
+
+        self.cog = cog
+        self.produto_id = produto_id
+        self.nick_roblox = nick_roblox
+
+
+    @discord.ui.button(label="✅ Confirmar e Pagar", style=discord.ButtonStyle.success)
+    async def confirmar(self, interaction: discord.Interaction, button: Button):
+
+        await iniciar_compra(self.cog, interaction, self.produto_id, nick_roblox=self.nick_roblox)
+
+
+    @discord.ui.button(label="✏️ Corrigir Nick", style=discord.ButtonStyle.secondary)
+    async def corrigir(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.send_modal(ModalCarrinho(self.cog, self.produto_id))
+
+
+    @discord.ui.button(label="❌ Cancelar", style=discord.ButtonStyle.danger)
+    async def cancelar(self, interaction: discord.Interaction, button: Button):
+
+        await interaction.response.edit_message(
+            content="❌ Pedido cancelado. Você pode iniciar um novo quando quiser, no menu do painel.",
+            embed=None,
+            view=None
+        )
+
+
+# ==========================================================
 # INICIAR COMPRA
 # ==========================================================
 
-async def iniciar_compra(cog, interaction: discord.Interaction, produto_id):
+async def iniciar_compra(cog, interaction: discord.Interaction, produto_id, nick_roblox=None):
 
     produto = cog.dados["produtos"].get(produto_id)
 
@@ -1040,6 +1163,7 @@ async def iniciar_compra(cog, interaction: discord.Interaction, produto_id):
         "produto_nome": produto["nome"],
         "preco": produto["preco"],
         "comprador_id": interaction.user.id,
+        "nick_roblox": nick_roblox,
         "status": "aguardando_pagamento",
         "criado_em": time.time(),
         "guild_id": interaction.guild.id if interaction.guild else None,
@@ -1048,17 +1172,27 @@ async def iniciar_compra(cog, interaction: discord.Interaction, produto_id):
 
     cog.salvar()
 
+    descricao = (
+        f"💰 **Valor:** R$ {produto['preco']}\n"
+    )
+
+    if nick_roblox:
+        descricao += f"🧍 **Nick Roblox:** `{nick_roblox}`\n"
+
+    descricao += (
+        f"\n**Chave PIX (copia e cola):**\n```{pix_chave}```\n"
+        "Depois de pagar, clique no botão **✅ Já paguei** abaixo.\n"
+        "Sua conta será enviada aqui no privado assim que o pagamento for aprovado."
+    )
+
     embed = discord.Embed(
-        title=f"🛒 {produto['nome']}",
-        description=(
-            f"💰 **Valor:** R$ {produto['preco']}\n\n"
-            f"**Chave PIX (copia e cola):**\n```{pix_chave}```\n"
-            "Depois de pagar, clique no botão **✅ Já paguei** abaixo.\n"
-            "Sua conta será enviada aqui no privado assim que o pagamento for aprovado."
-        ),
+        title=f"🛒 Pedido #{pedido_id} — {produto['nome']}",
+        description=descricao,
         color=discord.Color.gold(),
         timestamp=datetime.now(timezone.utc)
     )
+
+    embed.set_footer(text="Pagamento seguro via PIX • Sistema de Loja")
 
     view = PagamentoView(pedido_id)
 
@@ -1134,14 +1268,20 @@ class PagamentoView(View):
         if not donos_ids:
             return
 
+        descricao_aviso = (
+            f"👤 **Comprador:** <@{interaction.user.id}> (`{interaction.user.id}`)\n"
+            f"🎁 **Produto:** {pedido['produto_nome']}\n"
+            f"💰 **Valor:** R$ {pedido['preco']}\n"
+        )
+
+        if pedido.get("nick_roblox"):
+            descricao_aviso += f"🧍 **Nick Roblox:** `{pedido['nick_roblox']}`\n"
+
+        descricao_aviso += f"🆔 **Pedido:** `{self.pedido_id}`"
+
         aviso = discord.Embed(
             title="🛒 Novo pedido aguardando aprovação",
-            description=(
-                f"👤 **Comprador:** <@{interaction.user.id}> (`{interaction.user.id}`)\n"
-                f"🎁 **Produto:** {pedido['produto_nome']}\n"
-                f"💰 **Valor:** R$ {pedido['preco']}\n"
-                f"🆔 **Pedido:** `{self.pedido_id}`"
-            ),
+            description=descricao_aviso,
             color=discord.Color.gold(),
             timestamp=datetime.now(timezone.utc)
         )
@@ -1221,14 +1361,20 @@ class AprovarView(View):
         try:
             comprador = await interaction.client.fetch_user(comprador_id)
 
+            descricao_entrega = f"🎁 **Produto:** {pedido['produto_nome']}\n"
+
+            if pedido.get("nick_roblox"):
+                descricao_entrega += f"🧍 **Vinculado ao nick:** `{pedido['nick_roblox']}`\n"
+
+            descricao_entrega += (
+                f"\n**Dados de acesso:**\n```{credencial}```\n"
+                "Obrigado pela compra! 🎉"
+            )
+
             await comprador.send(
                 embed=discord.Embed(
                     title="✅ Pagamento aprovado!",
-                    description=(
-                        f"🎁 **Produto:** {pedido['produto_nome']}\n\n"
-                        f"**Dados de acesso:**\n```{credencial}```\n"
-                        "Obrigado pela compra! 🎉"
-                    ),
+                    description=descricao_entrega,
                     color=discord.Color.green(),
                     timestamp=datetime.now(timezone.utc)
                 )
@@ -1271,10 +1417,15 @@ class AprovarView(View):
 
         guild = interaction.client.get_guild(pedido.get("guild_id"))
 
+        texto_log = f"✅ Pedido `{self.pedido_id}` aprovado — **{pedido['produto_nome']}** entregue para <@{comprador_id}>."
+
+        if pedido.get("nick_roblox"):
+            texto_log += f" (nick Roblox: `{pedido['nick_roblox']}`)"
+
         await enviar_log(
             interaction.client,
             guild,
-            f"✅ Pedido `{self.pedido_id}` aprovado — **{pedido['produto_nome']}** entregue para <@{comprador_id}>.",
+            texto_log,
             discord.Color.green()
         )
 
