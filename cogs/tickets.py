@@ -8,59 +8,56 @@ from discord.ui import View
 from .logs import obter_canal_log
 
 DATA_DIR = (
-    os.getenv("TICKETS_DATA_DIR")
-    or os.getenv("SORTEIO_DATA_DIR")
-    or os.path.dirname(__file__)
+ os.getenv("TICKETS_DATA_DIR")
+ or os.getenv("SORTEIO_DATA_DIR")
+ or os.path.dirname(__file__)
 )
-
 os.makedirs(DATA_DIR, exist_ok=True)
-
 TICKETS_FILE = os.path.join(DATA_DIR, "tickets_abertos.json")
 
 def carregar_tickets_abertos():
-    if not os.path.exists(TICKETS_FILE):
-        return {}
-    try:
-        with open(TICKETS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+ if not os.path.exists(TICKETS_FILE):
+ return {}
+ try:
+ with open(TICKETS_FILE, "r", encoding="utf-8") as f:
+ return json.load(f)
+ except Exception:
+ return {}
 
 def salvar_tickets_abertos(dados):
-    try:
-        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
-            json.dump(dados, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"⚠️ Erro ao salvar tickets_abertos.json: {e}")
+ try:
+ with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+ json.dump(dados, f, ensure_ascii=False, indent=2)
+ except Exception as e:
+ print(f"⚠️ Erro ao salvar tickets_abertos.json: {e}")
 
 CONFIG_FILE = os.path.join(DATA_DIR, "tickets_config.json")
 
 def carregar_config():
-    if not os.path.exists(CONFIG_FILE):
-        return {}
-    try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+ if not os.path.exists(CONFIG_FILE):
+ return {}
+ try:
+ with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+ return json.load(f)
+ except Exception:
+ return {}
 
 def salvar_config(dados):
-    try:
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(dados, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"⚠️ Erro ao salvar tickets_config.json: {e}")
+ try:
+ with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+ json.dump(dados, f, ensure_ascii=False, indent=2)
+ except Exception as e:
+ print(f"⚠️ Erro ao salvar tickets_config.json: {e}")
 
 def config_guild(dados, guild_id):
-    return dados.setdefault(str(guild_id), {
-        "categoria_id": None,
-        "cargo_atendente_id": None
-    })
+ return dados.setdefault(str(guild_id), {
+ "categoria_id": None,
+ "cargo_atendente_id": None
+ })
 
 # ==========================================================
 # CONFIGURAÇÕES
 # ==========================================================
-
 CARGO_STAFF = "🛡️ Staff"
 CARGO_SUPORTE = "🛠️ Suporte"
 CATEGORIA_TICKETS = "🎫 ATENDIMENTO"
@@ -70,21 +67,20 @@ CANAL_LOGS = "📋・logs-tickets"
 # ==========================================================
 # EMBED PADRÃO
 # ==========================================================
-
 def criar_embed(titulo, descricao, cor=discord.Color.blurple()):
-    embed = discord.Embed(
-        title=titulo,
-        description=descricao,
-        color=cor,
-        timestamp=datetime.utcnow()
-    )
-    embed.set_footer(text="🎫 Sistema Profissional de Tickets")
-    return embed
+ embed = discord.Embed(
+ title=titulo,
+ description=descricao,
+ color=cor,
+ timestamp=datetime.utcnow()
+ )
+ embed.set_footer(text="🎫 Sistema Profissional de Tickets")
+ return embed
 
 def criar_embed_painel(guild):
-    embed = criar_embed(
-        "🎫 Central de Atendimento",
-        """
+ embed = criar_embed(
+ "🎫 Central de Atendimento",
+ """
 Bem-vindo ao suporte!
 Escolha uma opção abaixo:
 ❓ **Dúvidas**
@@ -95,443 +91,438 @@ Ajuda com problemas.
 Relatar usuários ou situações.
 Nossa equipe responderá em breve.
 """,
-        discord.Color.blue()
-    )
-    if guild.icon:
-        embed.set_thumbnail(url=guild.icon.url)
-    return embed
+ discord.Color.blue()
+ )
+ if guild.icon:
+ embed.set_thumbnail(url=guild.icon.url)
+ return embed
 
 # ==========================================================
 # VERIFICA EQUIPE
 # ==========================================================
-
 def eh_staff(member, guild_id=None):
-    if member.guild_permissions.administrator:
-        return True
-    
-    conf = carregar_config()
-    if guild_id:
-        cargo_configurado_id = config_guild(conf, guild_id).get("cargo_atendente_id")
-        if cargo_configurado_id:
-            ids_cargos = [cargo.id for cargo in member.roles]
-            if cargo_configurado_id in ids_cargos:
-                return True
-    
-    cargos = [cargo.name for cargo in member.roles]
-    return CARGO_STAFF in cargos or CARGO_SUPORTE in cargos
+ if member.guild_permissions.administrator:
+ return True
+ 
+ conf = carregar_config()
+ if guild_id:
+ cargo_configurado_id = config_guild(conf, guild_id).get("cargo_atendente_id")
+ if cargo_configurado_id:
+ ids_cargos = [cargo.id for cargo in member.roles]
+ if cargo_configurado_id in ids_cargos:
+ return True
+ 
+ cargos = [cargo.name for cargo in member.roles]
+ return CARGO_STAFF in cargos or CARGO_SUPORTE in cargos
 
 # ==========================================================
 # COG PRINCIPAL
 # ==========================================================
-
 class Tickets(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-    
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("🎫 Sistema de tickets carregado.")
-        self.bot.add_view(PainelTickets())
-        
-        abertos = carregar_tickets_abertos()
-        ainda_validos = {}
-        
-        for canal_id, dono_id in abertos.items():
-            canal = self.bot.get_channel(int(canal_id))
-            if canal is None:
-                continue
-            self.bot.add_view(BotoesTicket(dono_id))
-            ainda_validos[canal_id] = dono_id
-        
-        if ainda_validos != abertos:
-            salvar_tickets_abertos(ainda_validos)
-    
-    @commands.hybrid_command(name="setup-tickets")
-    @commands.has_permissions(manage_guild=True)
-    async def setup_tickets(self, ctx):
-        guild = ctx.guild
-        criado_algo = False
-        
-        staff = discord.utils.get(guild.roles, name=CARGO_STAFF)
-        if staff is None:
-            await guild.create_role(name=CARGO_STAFF, reason="Sistema de tickets")
-            criado_algo = True
-        
-        suporte = discord.utils.get(guild.roles, name=CARGO_SUPORTE)
-        if suporte is None:
-            await guild.create_role(name=CARGO_SUPORTE, reason="Sistema de tickets")
-            criado_algo = True
-        
-        categoria = discord.utils.get(guild.categories, name=CATEGORIA_TICKETS)
-        if categoria is None:
-            await guild.create_category(CATEGORIA_TICKETS, reason="Sistema de tickets")
-            criado_algo = True
-        
-        logs = discord.utils.get(guild.text_channels, name=CANAL_LOGS)
-        if logs is None:
-            await guild.create_text_channel(CANAL_LOGS, reason="Sistema de tickets")
-            criado_algo = True
-        
-        painel = discord.utils.get(guild.text_channels, name=CANAL_PAINEL)
-        if painel is None:
-            painel = await guild.create_text_channel(CANAL_PAINEL, reason="Sistema de tickets")
-            await painel.send(embed=criar_embed_painel(guild), view=PainelTickets())
-            criado_algo = True
-        
-        await ctx.send(
-            embed=criar_embed(
-                "✅ Setup de Tickets" if criado_algo else "ℹ️ Já configurado",
-                "Estrutura de tickets criada/verificada com sucesso."
-                if criado_algo
-                else "Tudo que faltava já existia, nada novo foi criado.",
-                discord.Color.green()
-            )
-        )
-    
-    @commands.hybrid_command(name="tickets-cargo-atendente")
-    @commands.has_permissions(manage_guild=True)
-    async def tickets_cargo_atendente(self, ctx):
-        conf = carregar_config()
-        atual_id = config_guild(conf, ctx.guild.id).get("cargo_atendente_id")
-        atual = ctx.guild.get_role(atual_id) if atual_id else None
-        
-        await ctx.send(
-            embed=criar_embed(
-                "🛡️ Cargo Atendente dos Tickets",
-                f"Cargo atual: {atual.mention if atual else '`Nenhum (usa os cargos padrão 🛡️ Staff / 🛠️ Suporte)`'}\n\n"
-                "Escolha abaixo qual cargo pode ver, assumir e fechar tickets.",
-                discord.Color.blurple()
-            ),
-            view=SelecionarCargoAtendenteView()
-        )
-    
-    @commands.hybrid_command(name="tickets-categoria")
-    @commands.has_permissions(manage_guild=True)
-    async def tickets_categoria(self, ctx):
-        conf = carregar_config()
-        atual_id = config_guild(conf, ctx.guild.id).get("categoria_id")
-        atual = ctx.guild.get_channel(atual_id) if atual_id else None
-        
-        await ctx.send(
-            embed=criar_embed(
-                "📂 Categoria dos Tickets",
-                f"Categoria atual: {atual.mention if atual else '`Nenhuma (usa a categoria do painel)`'}\n\n"
-                "Escolha abaixo em qual categoria os tickets devem ser criados.",
-                discord.Color.blurple()
-            ),
-            view=SelecionarCategoriaTicketsView()
-        )
-    
-    @commands.hybrid_command(name="painel-ticket", aliases=["painel-tickets"])
-    @commands.has_permissions(manage_guild=True)
-    async def painel_ticket(self, ctx, canal: discord.TextChannel = None):
-        canal_destino = canal or ctx.channel
-        await canal_destino.send(embed=criar_embed_painel(ctx.guild), view=PainelTickets())
-        
-        if canal_destino != ctx.channel:
-            await ctx.send(
-                embed=criar_embed(
-                    "✅ Painel enviado",
-                    f"O painel de tickets foi enviado em {canal_destino.mention}.",
-                    discord.Color.green()
-                )
-            )
-    
-    async def enviar_log(self, guild, embed):
-        canal = obter_canal_log(self.bot, guild, "tickets")
-        if canal is None:
-            canal = discord.utils.get(guild.text_channels, name=CANAL_LOGS)
-        if canal:
-            await canal.send(embed=embed)
-    
-    async def cog_command_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            return await ctx.send(
-                embed=criar_embed("🚫 Sem Permissão", "Você não tem permissão para usar esse comando.", discord.Color.red())
-            )
-        if isinstance(error, commands.ChannelNotFound):
-            return await ctx.send(
-                embed=criar_embed("❌ Canal não encontrado", "Não encontrei esse canal. Marque ele (#canal) ou passe o ID certo.", discord.Color.red())
-            )
-        raise error
+ def __init__(self, bot):
+ self.bot = bot
+ 
+ @commands.Cog.listener()
+ async def on_ready(self):
+ print("🎫 Sistema de tickets carregado.")
+ self.bot.add_view(PainelTickets())
+ 
+ abertos = carregar_tickets_abertos()
+ ainda_validos = {}
+ 
+ for canal_id, dono_id in abertos.items():
+ canal = self.bot.get_channel(int(canal_id))
+ if canal is None:
+ continue
+ self.bot.add_view(BotoesTicket(dono_id))
+ ainda_validos[canal_id] = dono_id
+ 
+ if ainda_validos != abertos:
+ salvar_tickets_abertos(ainda_validos)
+ 
+ @commands.hybrid_command(name="setup-tickets")
+ @commands.has_permissions(manage_guild=True)
+ async def setup_tickets(self, ctx):
+ guild = ctx.guild
+ criado_algo = False
+ 
+ staff = discord.utils.get(guild.roles, name=CARGO_STAFF)
+ if staff is None:
+ await guild.create_role(name=CARGO_STAFF, reason="Sistema de tickets")
+ criado_algo = True
+ 
+ suporte = discord.utils.get(guild.roles, name=CARGO_SUPORTE)
+ if suporte is None:
+ await guild.create_role(name=CARGO_SUPORTE, reason="Sistema de tickets")
+ criado_algo = True
+ 
+ categoria = discord.utils.get(guild.categories, name=CATEGORIA_TICKETS)
+ if categoria is None:
+ await guild.create_category(CATEGORIA_TICKETS, reason="Sistema de tickets")
+ criado_algo = True
+ 
+ logs = discord.utils.get(guild.text_channels, name=CANAL_LOGS)
+ if logs is None:
+ await guild.create_text_channel(CANAL_LOGS, reason="Sistema de tickets")
+ criado_algo = True
+ 
+ painel = discord.utils.get(guild.text_channels, name=CANAL_PAINEL)
+ if painel is None:
+ painel = await guild.create_text_channel(CANAL_PAINEL, reason="Sistema de tickets")
+ await painel.send(embed=criar_embed_painel(guild), view=PainelTickets())
+ criado_algo = True
+ 
+ await ctx.send(
+ embed=criar_embed(
+ "✅ Setup de Tickets" if criado_algo else "i️ Já configurado",
+ "Estrutura de tickets criada/verificada com sucesso."
+ if criado_algo
+ else "Tudo que faltava já existia, nada novo foi criado.",
+ discord.Color.green()
+ )
+ )
+ 
+ @commands.hybrid_command(name="tickets-cargo-atendente")
+ @commands.has_permissions(manage_guild=True)
+ async def tickets_cargo_atendente(self, ctx):
+ conf = carregar_config()
+ atual_id = config_guild(conf, ctx.guild.id).get("cargo_atendente_id")
+ atual = ctx.guild.get_role(atual_id) if atual_id else None
+ 
+ await ctx.send(
+ embed=criar_embed(
+ "🛡️ Cargo Atendente dos Tickets",
+ f"Cargo atual: {atual.mention if atual else '`Nenhum (usa os cargos padrão 🛡️ Staff / 🛠️ Suporte)`'}\n\n"
+ "Escolha abaixo qual cargo pode ver, assumir e fechar tickets.",
+ discord.Color.blurple()
+ ),
+ view=SelecionarCargoAtendenteView()
+ )
+ 
+ @commands.hybrid_command(name="tickets-categoria")
+ @commands.has_permissions(manage_guild=True)
+ async def tickets_categoria(self, ctx):
+ conf = carregar_config()
+ atual_id = config_guild(conf, ctx.guild.id).get("categoria_id")
+ atual = ctx.guild.get_channel(atual_id) if atual_id else None
+ 
+ await ctx.send(
+ embed=criar_embed(
+ "📂 Categoria dos Tickets",
+ f"Categoria atual: {atual.mention if atual else '`Nenhuma (usa a categoria do painel)`'}\n\n"
+ "Escolha abaixo em qual categoria os tickets devem ser criados.",
+ discord.Color.blurple()
+ ),
+ view=SelecionarCategoriaTicketsView()
+ )
+ 
+ @commands.hybrid_command(name="painel-ticket", aliases=["painel-tickets"])
+ @commands.has_permissions(manage_guild=True)
+ async def painel_ticket(self, ctx, canal: discord.TextChannel = None):
+ canal_destino = canal or ctx.channel
+ await canal_destino.send(embed=criar_embed_painel(ctx.guild), view=PainelTickets())
+ 
+ if canal_destino != ctx.channel:
+ await ctx.send(
+ embed=criar_embed(
+ "✅ Painel enviado",
+ f"O painel de tickets foi enviado em {canal_destino.mention}.",
+ discord.Color.green()
+ )
+ )
+ 
+ async def enviar_log(self, guild, embed):
+ canal = obter_canal_log(self.bot, guild, "tickets")
+ if canal is None:
+ canal = discord.utils.get(guild.text_channels, name=CANAL_LOGS)
+ if canal:
+ await canal.send(embed=embed)
+ 
+ async def cog_command_error(self, ctx, error):
+ if isinstance(error, commands.MissingPermissions):
+ return await ctx.send(
+ embed=criar_embed("🚫 Sem Permissão", "Você não tem permissão para usar esse comando.", discord.Color.red())
+ )
+ if isinstance(error, commands.ChannelNotFound):
+ return await ctx.send(
+ embed=criar_embed("❌ Canal não encontrado", "Não encontrei esse canal. Marque ele (#canal) ou passe o ID certo.", discord.Color.red())
+ )
+ raise error
 
 # ==========================================================
 # VIEWS
 # ==========================================================
-
 class SelecionarCargoAtendente(discord.ui.RoleSelect):
-    def __init__(self):
-        super().__init__(placeholder="Escolha o cargo que atende os tickets")
-    
-    async def callback(self, interaction: discord.Interaction):
-        cargo = self.values[0]
-        if cargo.managed:
-            return await interaction.response.send_message(
-                "❌ Esse cargo é gerenciado automaticamente e não pode ser usado.",
-                ephemeral=True
-            )
-        
-        conf = carregar_config()
-        config_guild(conf, interaction.guild.id)["cargo_atendente_id"] = cargo.id
-        salvar_config(conf)
-        
-        await interaction.response.edit_message(
-            embed=criar_embed(
-                "✅ Cargo definido",
-                f"{cargo.mention} agora pode ver, assumir e fechar tickets.",
-                discord.Color.green()
-            ),
-            view=None
-        )
+ def __init__(self):
+ super().__init__(placeholder="Escolha o cargo que atende os tickets")
+ 
+ async def callback(self, interaction: discord.Interaction):
+ cargo = self.values[0]
+ if cargo.managed:
+ return await interaction.response.send_message(
+ "❌ Esse cargo é gerenciado automaticamente e não pode ser usado.",
+ ephemeral=True
+ )
+ 
+ conf = carregar_config()
+ config_guild(conf, interaction.guild.id)["cargo_atendente_id"] = cargo.id
+ salvar_config(conf)
+ 
+ await interaction.response.edit_message(
+ embed=criar_embed(
+ "✅ Cargo definido",
+ f"{cargo.mention} agora pode ver, assumir e fechar tickets.",
+ discord.Color.green()
+ ),
+ view=None
+ )
 
 class SelecionarCargoAtendenteView(View):
-    def __init__(self):
-        super().__init__(timeout=120)
-        self.add_item(SelecionarCargoAtendente())
-    
-    async def interaction_check(self, interaction: discord.Interaction):
-        if not interaction.user.guild_permissions.manage_guild:
-            await interaction.response.send_message(
-                "🚫 Você precisa de permissão de Gerenciar Servidor para usar isso.",
-                ephemeral=True
-            )
-            return False
-        return True
-    
-    async def on_error(self, interaction, error, item):
-        import traceback
-        print("========== ERRO NO SelecionarCargoAtendenteView ==========")
-        traceback.print_exception(type(error), error, error.__traceback__)
-        print("===============================================================")
-        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
-        try:
-            if interaction.response.is_done():
-                await interaction.followup.send(msg, ephemeral=True)
-            else:
-                await interaction.response.send_message(msg, ephemeral=True)
-        except Exception:
-            pass
+ def __init__(self):
+ super().__init__(timeout=120)
+ self.add_item(SelecionarCargoAtendente())
+ 
+ async def interaction_check(self, interaction: discord.Interaction):
+ if not interaction.user.guild_permissions.manage_guild:
+ await interaction.response.send_message(
+ "🚫 Você precisa de permissão de Gerenciar Servidor para usar isso.",
+ ephemeral=True
+ )
+ return False
+ return True
+ 
+ async def on_error(self, interaction, error, item):
+ import traceback
+ print("========== ERRO NO SelecionarCargoAtendenteView ==========")
+ traceback.print_exception(type(error), error, error.__traceback__)
+ print("===============================================================")
+ msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+ try:
+ if interaction.response.is_done():
+ await interaction.followup.send(msg, ephemeral=True)
+ else:
+ await interaction.response.send_message(msg, ephemeral=True)
+ except Exception:
+ pass
 
 class SelecionarCategoriaTickets(discord.ui.ChannelSelect):
-    def __init__(self):
-        super().__init__(
-            placeholder="Escolha a categoria dos tickets",
-            channel_types=[discord.ChannelType.category]
-        )
-    
-    async def callback(self, interaction: discord.Interaction):
-        categoria_selecionada = self.values[0]
-        categoria = interaction.guild.get_channel(categoria_selecionada.id)
-        
-        if categoria is None:
-            categoria = categoria_selecionada.resolve()
-        if categoria is None:
-            categoria = await interaction.guild.fetch_channel(categoria_selecionada.id)
-        
-        conf = carregar_config()
-        config_guild(conf, interaction.guild.id)["categoria_id"] = categoria.id
-        salvar_config(conf)
-        
-        await interaction.response.edit_message(
-            embed=criar_embed(
-                "✅ Categoria definida",
-                f"Os tickets agora são criados dentro de **{categoria.name}**.",
-                discord.Color.green()
-            ),
-            view=None
-        )
+ def __init__(self):
+ super().__init__(
+ placeholder="Escolha a categoria dos tickets",
+ channel_types=[discord.ChannelType.category]
+ )
+ 
+ async def callback(self, interaction: discord.Interaction):
+ categoria_selecionada = self.values[0]
+ categoria = interaction.guild.get_channel(categoria_selecionada.id)
+ 
+ if categoria is None:
+ categoria = categoria_selecionada.resolve()
+ if categoria is None:
+ categoria = await interaction.guild.fetch_channel(categoria_selecionada.id)
+ 
+ conf = carregar_config()
+ config_guild(conf, interaction.guild.id)["categoria_id"] = categoria.id
+ salvar_config(conf)
+ 
+ await interaction.response.edit_message(
+ embed=criar_embed(
+ "✅ Categoria definida",
+ f"Os tickets agora são criados dentro de **{categoria.name}**.",
+ discord.Color.green()
+ ),
+ view=None
+ )
 
 class SelecionarCategoriaTicketsView(View):
-    def __init__(self):
-        super().__init__(timeout=120)
-        self.add_item(SelecionarCategoriaTickets())
-    
-    async def interaction_check(self, interaction: discord.Interaction):
-        if not interaction.user.guild_permissions.manage_guild:
-            await interaction.response.send_message(
-                "🚫 Você precisa de permissão de Gerenciar Servidor para usar isso.",
-                ephemeral=True
-            )
-            return False
-        return True
-    
-    async def on_error(self, interaction, error, item):
-        import traceback
-        print("========== ERRO NO SelecionarCategoriaTicketsView ==========")
-        traceback.print_exception(type(error), error, error.__traceback__)
-        print("=================================================================")
-        msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
-        try:
-            if interaction.response.is_done():
-                await interaction.followup.send(msg, ephemeral=True)
-            else:
-                await interaction.response.send_message(msg, ephemeral=True)
-        except Exception:
-            pass
+ def __init__(self):
+ super().__init__(timeout=120)
+ self.add_item(SelecionarCategoriaTickets())
+ 
+ async def interaction_check(self, interaction: discord.Interaction):
+ if not interaction.user.guild_permissions.manage_guild:
+ await interaction.response.send_message(
+ "🚫 Você precisa de permissão de Gerenciar Servidor para usar isso.",
+ ephemeral=True
+ )
+ return False
+ return True
+ 
+ async def on_error(self, interaction, error, item):
+ import traceback
+ print("========== ERRO NO SelecionarCategoriaTicketsView ==========")
+ traceback.print_exception(type(error), error, error.__traceback__)
+ print("=================================================================")
+ msg = f"❌ Erro:\n```{type(error).__name__}: {error}```"
+ try:
+ if interaction.response.is_done():
+ await interaction.followup.send(msg, ephemeral=True)
+ else:
+ await interaction.response.send_message(msg, ephemeral=True)
+ except Exception:
+ pass
 
 class PainelTickets(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(label="❓ Dúvidas", style=discord.ButtonStyle.primary, custom_id="abrir_duvidas")
-    async def duvidas(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await criar_ticket(interaction, "❓ Dúvidas")
-    
-    @discord.ui.button(label="🛠️ Suporte", style=discord.ButtonStyle.success, custom_id="abrir_suporte")
-    async def suporte(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await criar_ticket(interaction, "🛠️ Suporte")
-    
-    @discord.ui.button(label="🚨 Denúncias", style=discord.ButtonStyle.danger, custom_id="abrir_denuncia")
-    async def denuncia(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await criar_ticket(interaction, "🚨 Denúncias")
-    
-    async def on_error(self, interaction, error, item):
-        import traceback
-        print("========== ERRO NO PainelTickets ==========")
-        traceback.print_exception(type(error), error, error.__traceback__)
-        print("===============================================")
-        msg = f"❌ Deu erro ao criar o ticket:\n```{type(error).__name__}: {error}```"
-        try:
-            if interaction.response.is_done():
-                await interaction.followup.send(msg, ephemeral=True)
-            else:
-                await interaction.response.send_message(msg, ephemeral=True)
-        except Exception:
-            pass
+ def __init__(self):
+ super().__init__(timeout=None)
+ 
+ @discord.ui.button(label="❓ Dúvidas", style=discord.ButtonStyle.primary, custom_id="abrir_duvidas")
+ async def duvidas(self, interaction: discord.Interaction, button: discord.ui.Button):
+ await criar_ticket(interaction, "❓ Dúvidas")
+ 
+ @discord.ui.button(label="🛠️ Suporte", style=discord.ButtonStyle.success, custom_id="abrir_suporte")
+ async def suporte(self, interaction: discord.Interaction, button: discord.ui.Button):
+ await criar_ticket(interaction, "🛠️ Suporte")
+ 
+ @discord.ui.button(label="🚨 Denúncias", style=discord.ButtonStyle.danger, custom_id="abrir_denuncia")
+ async def denuncia(self, interaction: discord.Interaction, button: discord.ui.Button):
+ await criar_ticket(interaction, "🚨 Denúncias")
+ 
+ async def on_error(self, interaction, error, item):
+ import traceback
+ print("========== ERRO NO PainelTickets ==========")
+ traceback.print_exception(type(error), error, error.__traceback__)
+ print("===============================================")
+ msg = f"❌ Deu erro ao criar o ticket:\n```{type(error).__name__}: {error}```"
+ try:
+ if interaction.response.is_done():
+ await interaction.followup.send(msg, ephemeral=True)
+ else:
+ await interaction.response.send_message(msg, ephemeral=True)
+ except Exception:
+ pass
 
 # ==========================================================
-# CRIAÇÃO DO TICKET
+# CRIAÇÃO DO TICKET (CORRIGIDO - marca membro e cargo)
 # ==========================================================
-
 async def criar_ticket(interaction: discord.Interaction, tipo):
-    guild = interaction.guild
-    membro = interaction.user
-    
-    # Verificar ticket existente
-    for canal in guild.text_channels:
-        if canal.name == f"ticket-{membro.id}":
-            return await interaction.response.send_message(
-                embed=criar_embed(
-                    "❌ Ticket existente",
-                    "Você já possui um ticket aberto.",
-                    discord.Color.red()
-                ),
-                ephemeral=True
-            )
-    
-    # Pegar cargos
-    suporte = discord.utils.get(guild.roles, name=CARGO_SUPORTE)
-    staff = discord.utils.get(guild.roles, name=CARGO_STAFF)
-    
-    # Pegar categoria
-    categoria = None
-    conf_tickets = carregar_config()
-    categoria_id = config_guild(conf_tickets, guild.id).get("categoria_id")
-    
-    if categoria_id:
-        categoria = guild.get_channel(categoria_id)
-    if categoria is None:
-        categoria = interaction.channel.category
-    if categoria is None:
-        categoria = discord.utils.get(guild.categories, name=CATEGORIA_TICKETS)
-    if categoria is None:
-        return await interaction.response.send_message(
-            "❌ Não consegui identificar uma categoria pra criar o ticket.",
-            ephemeral=True
-        )
-    
-    # Permissões
-    permissoes = {
-        guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        membro: discord.PermissionOverwrite(
-            view_channel=True,
-            send_messages=True,
-            read_message_history=True
-        )
-    }
-    
-    if suporte:
-        permissoes[suporte] = discord.PermissionOverwrite(
-            view_channel=True,
-            send_messages=True,
-            read_message_history=True
-        )
-    
-    if staff:
-        permissoes[staff] = discord.PermissionOverwrite(
-            view_channel=True,
-            send_messages=True,
-            manage_channels=True,
-            read_message_history=True
-        )
-    
-    # Adicionar cargo atendente se configurado
-    cargo_atendente_id = config_guild(conf_tickets, guild.id).get("cargo_atendente_id")
-    if cargo_atendente_id:
-        cargo_atendente = guild.get_role(cargo_atendente_id)
-        if cargo_atendente:
-            permissoes[cargo_atendente] = discord.PermissionOverwrite(
-                view_channel=True,
-                send_messages=True,
-                manage_channels=True,
-                read_message_history=True
-            )
-    
-    # Criar canal
-    canal = await guild.create_text_channel(
-        name=f"ticket-{membro.id}",
-        category=categoria,
-        overwrites=permissoes,
-        reason="Novo ticket criado"
-    )
-    
-    # Responder botão
-    await interaction.response.send_message(
-        embed=criar_embed(
-            "🎫 Ticket criado",
-            f"Seu ticket foi criado em {canal.mention}",
-            discord.Color.green()
-        ),
-        ephemeral=True
-    )
-    
-    # Embed do ticket com menções
-    mention_cargo = ""
-    if cargo_atendente_id:
-        cargo_atendente = guild.get_role(cargo_atendente_id)
-        if cargo_atendente:
-            mention_cargo = f"\n{cargo_atendente.mention}"
-    
-    embed = criar_embed(
-        "🎫 Atendimento iniciado",
-        f"""
+ guild = interaction.guild
+ membro = interaction.user
+ 
+ # Verificar ticket existente
+ for canal in guild.text_channels:
+ if canal.name == f"ticket-{membro.id}":
+ return await interaction.response.send_message(
+ embed=criar_embed(
+ "❌ Ticket existente",
+ "Você já possui um ticket aberto.",
+ discord.Color.red()
+ ),
+ ephemeral=True
+ )
+ 
+ # Pegar cargos
+ suporte = discord.utils.get(guild.roles, name=CARGO_SUPORTE)
+ staff = discord.utils.get(guild.roles, name=CARGO_STAFF)
+ 
+ # Pegar categoria
+ categoria = None
+ conf_tickets = carregar_config()
+ categoria_id = config_guild(conf_tickets, guild.id).get("categoria_id")
+ 
+ if categoria_id:
+ categoria = guild.get_channel(categoria_id)
+ if categoria is None:
+ categoria = interaction.channel.category
+ if categoria is None:
+ categoria = discord.utils.get(guild.categories, name=CATEGORIA_TICKETS)
+ if categoria is None:
+ return await interaction.response.send_message(
+ "❌ Não consegui identificar uma categoria pra criar o ticket.",
+ ephemeral=True
+ )
+ 
+ # Permissões
+ permissoes = {
+ guild.default_role: discord.PermissionOverwrite(view_channel=False),
+ membro: discord.PermissionOverwrite(
+ view_channel=True,
+ send_messages=True,
+ read_message_history=True
+ )
+ }
+ 
+ if suporte:
+ permissoes[suporte] = discord.PermissionOverwrite(
+ view_channel=True,
+ send_messages=True,
+ read_message_history=True
+ )
+ 
+ if staff:
+ permissoes[staff] = discord.PermissionOverwrite(
+ view_channel=True,
+ send_messages=True,
+ manage_channels=True,
+ read_message_history=True
+ )
+ 
+ # Adicionar cargo atendente se configurado
+ cargo_atendente_id = config_guild(conf_tickets, guild.id).get("cargo_atendente_id")
+ cargo_atendente = None
+ if cargo_atendente_id:
+ cargo_atendente = guild.get_role(cargo_atendente_id)
+ if cargo_atendente:
+ permissoes[cargo_atendente] = discord.PermissionOverwrite(
+ view_channel=True,
+ send_messages=True,
+ manage_channels=True,
+ read_message_history=True
+ )
+ 
+ # Criar canal
+ canal = await guild.create_text_channel(
+ name=f"ticket-{membro.id}",
+ category=categoria,
+ overwrites=permissoes,
+ reason="Novo ticket criado"
+ )
+ 
+ # Responder botão
+ await interaction.response.send_message(
+ embed=criar_embed(
+ "🎫 Ticket criado",
+ f"Seu ticket foi criado em {canal.mention}",
+ discord.Color.green()
+ ),
+ ephemeral=True
+ )
+ 
+ # Embed do ticket
+ embed = criar_embed(
+ "🎫 Atendimento iniciado",
+ f"""
 Olá {membro.mention}! 👋
 Seu ticket foi aberto.
-
 📌 **Categoria:**
 {tipo}
-
 Explique detalhadamente o motivo do contato.
 A equipe responderá assim que possível.
 """,
-        discord.Color.blue()
-    )
-    
-    msg = await canal.send(embed=embed, view=BotoesTicket(membro.id))
-    
-    # Marcar cargo + membro
-    if mention_cargo:
-        await canal.send(f"🔔 Notificação: {mention_cargo} {membro.mention}")
-    
-    # Salvar ticket
-    abertos = carregar_tickets_abertos()
-    abertos[str(canal.id)] = membro.id
-    salvar_tickets_abertos(abertos)
-    
-    # Log
-    log = criar_embed(
-        "📩 Ticket Aberto",
-        f"""
+ discord.Color.blue()
+ )
+ 
+ msg = await canal.send(embed=embed, view=BotoesTicket(membro.id))
+ 
+ # Marcar cargo atendente + membro
+ mentions = [membro.mention]
+ if cargo_atendente:
+ mentions.insert(0, cargo_atendente.mention)
+ elif suporte:
+ mentions.insert(0, suporte.mention)
+ 
+ if mentions:
+ await canal.send(f"🔔 Notificação: {' '.join(mentions)}")
+ 
+ # Salvar ticket
+ abertos = carregar_tickets_abertos()
+ abertos[str(canal.id)] = membro.id
+ salvar_tickets_abertos(abertos)
+ 
+ # Log
+ log = criar_embed(
+ "📩 Ticket Aberto",
+ f"""
 👤 Usuário:
 {membro.mention}
 📂 Categoria:
@@ -539,139 +530,138 @@ A equipe responderá assim que possível.
 📌 Canal:
 {canal.mention}
 """,
-        discord.Color.green()
-    )
-    
-    for cog in interaction.client.cogs.values():
-        if isinstance(cog, Tickets):
-            await cog.enviar_log(guild, log)
-            break
+ discord.Color.green()
+ )
+ 
+ for cog in interaction.client.cogs.values():
+ if isinstance(cog, Tickets):
+ await cog.enviar_log(guild, log)
+ break
 
 # ==========================================================
 # BOTÕES DENTRO DO TICKET
 # ==========================================================
-
 class BotoesTicket(View):
-    def __init__(self, dono_id):
-        super().__init__(timeout=None)
-        self.dono_id = dono_id
-        self.assumir.custom_id = f"assumir_ticket_{dono_id}"
-        self.chamar_staff.custom_id = f"chamar_staff_{dono_id}"
-        self.chamar_membro.custom_id = f"chamar_membro_{dono_id}"
-        self.fechar.custom_id = f"fechar_ticket_{dono_id}"
-    
-    @discord.ui.button(label="🟢 Assumir Ticket", style=discord.ButtonStyle.success)
-    async def assumir(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not eh_staff(interaction.user, interaction.guild.id):
-            return await interaction.response.send_message(
-                embed=criar_embed(
-                    "🚫 Sem permissão",
-                    "Apenas a equipe pode assumir tickets.",
-                    discord.Color.red()
-                ),
-                ephemeral=True
-            )
-        
-        embed = criar_embed(
-            "🟢 Ticket assumido",
-            f"Este ticket foi assumido por:\n🛡️ {interaction.user.mention}",
-            discord.Color.green()
-        )
-        await interaction.response.send_message(embed=embed)
-        await interaction.channel.send(embed=embed)
-    
-    @discord.ui.button(label="📢 Chamar Staff", style=discord.ButtonStyle.primary)
-    async def chamar_staff(self, interaction: discord.Interaction, button: discord.ui.Button):
-        staff = discord.utils.get(interaction.guild.roles, name=CARGO_STAFF)
-        if staff:
-            await interaction.channel.send(f"📢 {staff.mention} foi solicitado neste ticket.")
-        
-        await interaction.response.send_message(
-            embed=criar_embed(
-                "📢 Staff chamado",
-                "A equipe foi notificada.",
-                discord.Color.blue()
-            ),
-            ephemeral=True
-        )
-    
-    @discord.ui.button(label="👤 Chamar Membro", style=discord.ButtonStyle.secondary)
-    async def chamar_membro(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not eh_staff(interaction.user, interaction.guild.id):
-            return await interaction.response.send_message(
-                embed=criar_embed(
-                    "🚫 Sem permissão",
-                    "Apenas a equipe pode chamar o membro.",
-                    discord.Color.red()
-                ),
-                ephemeral=True
-            )
-        
-        await interaction.channel.send(f"👤 <@{self.dono_id}>, a equipe solicitou sua presença.")
-        await interaction.response.send_message(
-            embed=criar_embed(
-                "👤 Usuário chamado",
-                "O membro foi notificado.",
-                discord.Color.blurple()
-            ),
-            ephemeral=True
-        )
-    
-    @discord.ui.button(label="🔒 Fechar Ticket", style=discord.ButtonStyle.danger)
-    async def fechar(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not eh_staff(interaction.user, interaction.guild.id):
-            return await interaction.response.send_message(
-                embed=criar_embed(
-                    "🚫 Sem permissão",
-                    "Somente Staff ou Suporte podem fechar tickets.",
-                    discord.Color.red()
-                ),
-                ephemeral=True
-            )
-        
-        log = criar_embed(
-            "🔒 Ticket fechado",
-            f"""
+ def __init__(self, dono_id):
+ super().__init__(timeout=None)
+ self.dono_id = dono_id
+ self.assumir.custom_id = f"assumir_ticket_{dono_id}"
+ self.chamar_staff.custom_id = f"chamar_staff_{dono_id}"
+ self.chamar_membro.custom_id = f"chamar_membro_{dono_id}"
+ self.fechar.custom_id = f"fechar_ticket_{dono_id}"
+ 
+ @discord.ui.button(label="🟢 Assumir Ticket", style=discord.ButtonStyle.success)
+ async def assumir(self, interaction: discord.Interaction, button: discord.ui.Button):
+ if not eh_staff(interaction.user, interaction.guild.id):
+ return await interaction.response.send_message(
+ embed=criar_embed(
+ "🚫 Sem permissão",
+ "Apenas a equipe pode assumir tickets.",
+ discord.Color.red()
+ ),
+ ephemeral=True
+ )
+ 
+ embed = criar_embed(
+ "🟢 Ticket assumido",
+ f"Este ticket foi assumido por:\n🛡️ {interaction.user.mention}",
+ discord.Color.green()
+ )
+ await interaction.response.send_message(embed=embed)
+ await interaction.channel.send(embed=embed)
+ 
+ @discord.ui.button(label="📢 Chamar Staff", style=discord.ButtonStyle.primary)
+ async def chamar_staff(self, interaction: discord.Interaction, button: discord.ui.Button):
+ staff = discord.utils.get(interaction.guild.roles, name=CARGO_STAFF)
+ if staff:
+ await interaction.channel.send(f"📢 {staff.mention} foi solicitado neste ticket.")
+ 
+ await interaction.response.send_message(
+ embed=criar_embed(
+ "📢 Staff chamado",
+ "A equipe foi notificada.",
+ discord.Color.blue()
+ ),
+ ephemeral=True
+ )
+ 
+ @discord.ui.button(label="👤 Chamar Membro", style=discord.ButtonStyle.secondary)
+ async def chamar_membro(self, interaction: discord.Interaction, button: discord.ui.Button):
+ if not eh_staff(interaction.user, interaction.guild.id):
+ return await interaction.response.send_message(
+ embed=criar_embed(
+ "🚫 Sem permissão",
+ "Apenas a equipe pode chamar o membro.",
+ discord.Color.red()
+ ),
+ ephemeral=True
+ )
+ 
+ await interaction.channel.send(f"👤 <@{self.dono_id}>, a equipe solicitou sua presença.")
+ await interaction.response.send_message(
+ embed=criar_embed(
+ "👤 Usuário chamado",
+ "O membro foi notificado.",
+ discord.Color.blurple()
+ ),
+ ephemeral=True
+ )
+ 
+ @discord.ui.button(label="🔒 Fechar Ticket", style=discord.ButtonStyle.danger)
+ async def fechar(self, interaction: discord.Interaction, button: discord.ui.Button):
+ if not eh_staff(interaction.user, interaction.guild.id):
+ return await interaction.response.send_message(
+ embed=criar_embed(
+ "🚫 Sem permissão",
+ "Somente Staff ou Suporte podem fechar tickets.",
+ discord.Color.red()
+ ),
+ ephemeral=True
+ )
+ 
+ log = criar_embed(
+ "🔒 Ticket fechado",
+ f"""
 📌 Canal:
 {interaction.channel.name}
 🛡️ Fechado por:
 {interaction.user.mention}
 """,
-            discord.Color.red()
-        )
-        
-        for cog in interaction.client.cogs.values():
-            if isinstance(cog, Tickets):
-                await cog.enviar_log(interaction.guild, log)
-                break
-        
-        await interaction.response.send_message(
-            embed=criar_embed(
-                "🔒 Ticket fechado",
-                "Este ticket será apagado em 5 segundos.",
-                discord.Color.orange()
-            )
-        )
-        
-        await asyncio.sleep(5)
-        abertos = carregar_tickets_abertos()
-        abertos.pop(str(interaction.channel.id), None)
-        salvar_tickets_abertos(abertos)
-        await interaction.channel.delete()
-    
-    async def on_error(self, interaction, error, item):
-        import traceback
-        print("========== ERRO NO BotoesTicket ==========")
-        traceback.print_exception(type(error), error, error.__traceback__)
-        print("==============================================")
-        msg = f"❌ Deu erro nesse botão:\n```{type(error).__name__}: {error}```"
-        try:
-            if interaction.response.is_done():
-                await interaction.followup.send(msg, ephemeral=True)
-            else:
-                await interaction.response.send_message(msg, ephemeral=True)
-        except Exception:
-            pass
+ discord.Color.red()
+ )
+ 
+ for cog in interaction.client.cogs.values():
+ if isinstance(cog, Tickets):
+ await cog.enviar_log(interaction.guild, log)
+ break
+ 
+ await interaction.response.send_message(
+ embed=criar_embed(
+ "🔒 Ticket fechado",
+ "Este ticket será apagado em 5 segundos.",
+ discord.Color.orange()
+ )
+ )
+ 
+ await asyncio.sleep(5)
+ abertos = carregar_tickets_abertos()
+ abertos.pop(str(interaction.channel.id), None)
+ salvar_tickets_abertos(abertos)
+ await interaction.channel.delete()
+ 
+ async def on_error(self, interaction, error, item):
+ import traceback
+ print("========== ERRO NO BotoesTicket ==========")
+ traceback.print_exception(type(error), error, error.__traceback__)
+ print("==============================================")
+ msg = f"❌ Deu erro nesse botão:\n```{type(error).__name__}: {error}```"
+ try:
+ if interaction.response.is_done():
+ await interaction.followup.send(msg, ephemeral=True)
+ else:
+ await interaction.response.send_message(msg, ephemeral=True)
+ except Exception:
+ pass
 
 async def setup(bot):
-    await bot.add_cog(Tickets(bot))
+ await bot.add_cog(Tickets(bot))
