@@ -1,17 +1,13 @@
 import discord
-
 from datetime import datetime, timezone
-
 from discord.ext import commands
 from discord.ui import View, Select, Button
-
 
 # ==========================================================
 # DADOS DAS CATEGORIAS
 # ==========================================================
 
 CATEGORIAS = {
-
     "basicos": {
         "nome": "⚙️ Geral",
         "descricao": "Comandos básicos do bot.",
@@ -23,7 +19,6 @@ CATEGORIAS = {
             ("!restore", "Restaura dados a partir de um backup .zip anexado (Administrador, só via !)."),
         ]
     },
-
     "automod": {
         "nome": "🚨 AutoMod",
         "descricao": "Bloqueia mensagens com palavras proibidas e avisa num canal de log.",
@@ -33,7 +28,6 @@ CATEGORIAS = {
             ("!automod-desativar", "Desliga o bloqueio automático."),
         ]
     },
-
     "antispam": {
         "nome": "🚫 Anti-spam",
         "descricao": "Proteção automática contra flood de mensagens (Administrador).",
@@ -42,7 +36,6 @@ CATEGORIAS = {
             ("!desativarantispam", "Desliga a proteção automática contra spam neste servidor."),
         ]
     },
-
     "logs": {
         "nome": "📋 Logs",
         "descricao": "Configure pra onde cada tipo de log vai (moderação, tickets, loja, etc).",
@@ -50,7 +43,6 @@ CATEGORIAS = {
             ("!logs-painel", "Abre o painel: escolha a categoria e depois o canal de destino."),
         ]
     },
-
     "sugestoes": {
         "nome": "💡 Sugestões",
         "descricao": "Membros sugerem ideias, votam com reação, e staff aprova/recusa.",
@@ -59,7 +51,6 @@ CATEGORIAS = {
             ("!sugestoes-lista", "Lista as sugestões ainda pendentes de avaliação."),
         ]
     },
-
     "autorole": {
         "nome": "🏷️ Cargo Automático",
         "descricao": "Todo novo membro recebe cargo(s) automaticamente ao entrar.",
@@ -67,7 +58,6 @@ CATEGORIAS = {
             ("!autorole-painel", "Escolhe quais cargos são dados automaticamente e ativa/desativa."),
         ]
     },
-
     "cargos": {
         "nome": "🎭 Cargos Automáticos",
         "descricao": "Membros escolhem sozinhos os próprios cargos, sem precisar de staff.",
@@ -75,7 +65,6 @@ CATEGORIAS = {
             ("!cargos-admin", "Painel de administração: adicionar/remover cargos e enviar o painel público."),
         ]
     },
-
     "boasvindas": {
         "nome": "👋 Boas-vindas",
         "descricao": "Mensagens de entrada/saída com visual pronto. Configuração 100% por painel.",
@@ -83,7 +72,6 @@ CATEGORIAS = {
             ("!boasvindas-painel", "Abre o painel: escolha os canais, ative/desative e teste o visual."),
         ]
     },
-
     "niveis": {
         "nome": "📈 Níveis",
         "descricao": "Ganhe XP conversando e suba de nível. Level up dá bônus de moedas se a Loja/Jogos estiver ativa.",
@@ -92,7 +80,6 @@ CATEGORIAS = {
             ("!levels", "Ranking dos 10 com maior nível do servidor."),
         ]
     },
-
     "jogos": {
         "nome": "🎮 Jogos & Economia",
         "descricao": "Sistema de moedas e 10 jogos pra passar o tempo. Todo mundo começa com 500 🪙.",
@@ -114,7 +101,6 @@ CATEGORIAS = {
             ("!pescar", "Pesque peixes aleatórios (cooldown 20min)."),
         ]
     },
-
     "loja": {
         "nome": "🛒 Loja",
         "descricao": "Sistema de vendas com estoque e aprovação manual. Gerenciar produtos exige Administrador; aprovar pedidos exige o cargo **✅Aprovador**.",
@@ -134,17 +120,18 @@ CATEGORIAS = {
             ("!loja-pix <chave>", "(Alternativa por texto) Configura a chave PIX."),
         ]
     },
-
     "loja-robux": {
         "nome": "🎮 Loja Robux",
-        "descricao": "Compra de Robux com cálculo automático de valor e gamepass. Configurar o preço exige Administrador.",
+        "descricao": "Sistema completo de compra de Robux com carrinho, aprovação em 2 passos e cálculo automático. Usuários compram, admins aprovam.",
         "comandos": [
-            ("🎮 Comprar Robux", "Botão do painel — pede seu nick do Roblox, quantidade e se é com ou sem taxa, e já manda o pagamento."),
-            ("!loja-robux-preco <valor> [taxa]", "Define o preço de 1.000 Robux em R$ e a taxa da gamepass (padrão 30%)."),
-            ("!loja-robux-painel", "Envia o painel público de compra de Robux no canal atual."),
+            ("!/loja-carrinho-novo", "Abre o formulário: informe nick do Roblox, quantidade de Robux e método (com/sem taxa)."),
+            ("!loja-carrinho-novo", "Alternativa por texto do comando acima."),
+            ("!/loja-carrinho-aprovar <ID>", "Admin aprova um carrinho aguardando (com botões: Aprovar ou Rejeitar)."),
+            ("!loja-carrinhos-pendentes", "Lista todos os carrinhos aguardando aprovação de admin."),
+            ("!/loja-robux-preco <valor> [taxa]", "Define o preço de 1.000 Robux em R$ e a taxa da gamepass (padrão 30% — Roblox)."),
+            ("!loja-robux-painel", "Envia o painel público com o botão de comprar Robux no canal atual."),
         ]
     },
-
     "moderacao": {
         "nome": "🛡️ Moderação",
         "descricao": "Comandos para manter o servidor organizado e seguro.",
@@ -165,7 +152,6 @@ CATEGORIAS = {
             ("!nick @usuário [novo nome]", "Altera o apelido de um membro."),
         ]
     },
-
     "sorteios": {
         "nome": "🎉 Sorteios",
         "descricao": "Sistema completo de sorteios com painel interativo.",
@@ -177,7 +163,6 @@ CATEGORIAS = {
             ("!sorteio-editar <ID>", "Abre o painel para editar um sorteio ativo."),
         ]
     },
-
     "tickets": {
         "nome": "🎫 Tickets",
         "descricao": "Sistema de atendimento por botões (sem comandos de texto).",
@@ -193,7 +178,6 @@ CATEGORIAS = {
             ("🔒 Fechar Ticket", "Botão dentro do ticket — apenas Staff/Suporte."),
         ]
     },
-
     "conquistas": {
         "nome": "🏆 Conquistas",
         "descricao": "Badges desbloqueadas automaticamente ao atingir marcos no servidor.",
@@ -202,7 +186,6 @@ CATEGORIAS = {
             ("!conquistas-ranking", "Top 10 com mais conquistas."),
         ]
     },
-
     "salasvoz": {
         "nome": "🔊 Salas de Voz Temporárias",
         "descricao": "Entrar no canal gatilho cria uma sala só sua, que some quando esvazia.",
@@ -210,7 +193,6 @@ CATEGORIAS = {
             ("!salasvoz-painel", "Escolhe o canal de voz gatilho (Administrador)."),
         ]
     },
-
     "cosmeticos": {
         "nome": "✨ Loja de Cosméticos",
         "descricao": "Compre cargos especiais usando as moedas do sistema de jogos.",
@@ -219,7 +201,6 @@ CATEGORIAS = {
             ("!cosmeticos-admin", "Cadastra/remove itens à venda (Administrador)."),
         ]
     },
-
     "drops": {
         "nome": "💰 Drops",
         "descricao": "Baús de moedas caem aleatoriamente no chat, quem clica primeiro leva.",
@@ -227,7 +208,6 @@ CATEGORIAS = {
             ("!drops-painel", "Configura canal, intervalo e valor dos baús (Administrador)."),
         ]
     },
-
     "parcerias": {
         "nome": "🤝 Parcerias",
         "descricao": "Outros servidores pedem parceria, você aprova/recusa, publica automaticamente.",
@@ -237,7 +217,6 @@ CATEGORIAS = {
             ("!parcerias-canal-publicar #canal", "Define onde parcerias aprovadas são publicadas."),
         ]
     },
-
     "convites": {
         "nome": "📨 Convites",
         "descricao": "Veja quem convidou quem pro servidor.",
@@ -246,7 +225,6 @@ CATEGORIAS = {
             ("!convites-ranking", "Top 10 quem mais convidou."),
         ]
     },
-
     "aniversarios": {
         "nome": "🎂 Aniversários",
         "descricao": "Cadastre seu aniversário e receba parabéns automático no dia.",
@@ -257,7 +235,6 @@ CATEGORIAS = {
             ("!aniversarios-lista", "Lista todo mundo cadastrado."),
         ]
     },
-
     "backup": {
         "nome": "💾 Backup",
         "descricao": "Exporte ou restaure todos os dados configurados do bot.",
@@ -267,7 +244,6 @@ CATEGORIAS = {
             ("!stats", "Dashboard com estatísticas do servidor e do bot."),
         ]
     },
-
     "verificacao": {
         "nome": "🔰 Verificação",
         "descricao": "Sistema de verificação de novos membros por botão (sem comandos de texto).",
@@ -276,143 +252,96 @@ CATEGORIAS = {
             ("🔓 Verificar", "Botão fixo no canal 🔰・verificacao — libera o acesso ao servidor."),
         ]
     },
-
 }
-
 
 # ==========================================================
 # EMBEDS
 # ==========================================================
 
 def saudacao():
-
     hora_br = (datetime.now(timezone.utc).hour - 3) % 24
-
     if 5 <= hora_br < 12:
         return "Bom dia"
-
     if 12 <= hora_br < 18:
         return "Boa tarde"
-
     return "Boa noite"
 
-
 def texto_categoria(chave):
-
     dados = CATEGORIAS[chave]
-
     linhas = [f"## {dados['nome']}", dados["descricao"], ""]
-
     for comando, explicacao in dados["comandos"]:
-
         linhas.append(f"**{comando}**\n{explicacao}")
-
     return "\n\n".join(linhas)
-
 
 # ==========================================================
 # LAYOUT — CENTRAL DE CONTROLE (Components V2)
 # ==========================================================
 
 class BotaoCategoria(discord.ui.Button):
-
     def __init__(self, chave, nome):
-
         super().__init__(
             label=nome,
             style=discord.ButtonStyle.secondary,
             custom_id=f"ajuda_categoria_{chave}"
         )
-
         self.chave = chave
 
-
     async def callback(self, interaction: discord.Interaction):
-
         await interaction.response.edit_message(
             view=CategoriaLayout(self.chave)
         )
 
-
 class BotaoVoltar(discord.ui.Button):
-
     def __init__(self):
-
         super().__init__(
             label="🔙 Voltar",
             style=discord.ButtonStyle.primary,
             custom_id="ajuda_voltar"
         )
 
-
     async def callback(self, interaction: discord.Interaction):
-
         await interaction.response.edit_message(
             view=CentralControleLayout(interaction.client, interaction.user, interaction.guild)
         )
 
-
 class CategoriaLayout(discord.ui.LayoutView):
-
     def __init__(self, chave="basicos"):
-
         super().__init__(timeout=None)
-
         container = discord.ui.Container(accent_color=discord.Color.blurple())
-
         container.add_item(discord.ui.TextDisplay(texto_categoria(chave)))
-
         container.add_item(discord.ui.Separator())
-
         linha = discord.ui.ActionRow()
         linha.add_item(BotaoVoltar())
-
         container.add_item(linha)
-
         self.add_item(container)
 
-
 class CentralControleLayout(discord.ui.LayoutView):
-
     def __init__(self, bot, user, guild):
-
         super().__init__(timeout=None)
-
         container = discord.ui.Container(accent_color=discord.Color.blurple())
-
         nome_usuario = user.display_name if user else "administrador"
-
         cabecalho = (
             f"## 🎛️ Central de Controle\n"
             f"Olá, **{nome_usuario}**! {saudacao()} 👋\n\n"
             "Escolha uma categoria abaixo pra ver os comandos.\n\n"
             "Prefixo: **`!`** ou **`/`**"
         )
-
         if bot.user and bot.user.display_avatar:
-
             secao = discord.ui.Section(
                 cabecalho,
                 accessory=discord.ui.Thumbnail(bot.user.display_avatar.url)
             )
-
             container.add_item(secao)
-
         else:
-
             container.add_item(discord.ui.TextDisplay(cabecalho))
 
         container.add_item(discord.ui.Separator())
 
         chaves = list(CATEGORIAS.items())
-
         for i in range(0, len(chaves), 5):
-
             linha = discord.ui.ActionRow()
-
             for chave, dados in chaves[i:i + 5]:
                 linha.add_item(BotaoCategoria(chave, dados["nome"]))
-
             container.add_item(linha)
 
         if guild:
@@ -420,43 +349,32 @@ class CentralControleLayout(discord.ui.LayoutView):
 
         self.add_item(container)
 
-
 # ==========================================================
 # COG
 # ==========================================================
 
 class Ajuda(commands.Cog):
-
     def __init__(self, bot):
-
         self.bot = bot
 
-
     async def cog_load(self):
-
         self.bot.add_view(CentralControleLayout(self.bot, self.bot.user, None))
         self.bot.add_view(CategoriaLayout())
 
-
     @commands.hybrid_command(name="help", aliases=["ajuda", "comandos"])
     async def help_cmd(self, ctx):
-
         await ctx.send(
             view=CentralControleLayout(self.bot, ctx.author, ctx.guild)
         )
 
-
     @commands.hybrid_command(name="invite", aliases=["convite", "convidar"])
     async def invite_cmd(self, ctx):
-
         permissoes = discord.Permissions(administrator=True)
-
         link = discord.utils.oauth_url(
             self.bot.user.id,
             permissions=permissoes,
             scopes=("bot", "applications.commands")
         )
-
         embed = discord.Embed(
             title="🔗 Convide o bot para o seu servidor!",
             description=(
@@ -467,19 +385,15 @@ class Ajuda(commands.Cog):
             color=discord.Color.blurple(),
             timestamp=datetime.now(timezone.utc)
         )
-
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
-
         await ctx.send(embed=embed)
-
 
 # ==========================================================
 # SETUP
 # ==========================================================
 
 async def setup(bot):
-
     await bot.add_cog(
         Ajuda(bot)
     )
