@@ -3,19 +3,24 @@ import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+
 load_dotenv()
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.presences = True
+
 bot = commands.Bot(
     command_prefix="!",
     intents=intents,
     help_command=None
 )
+
 # ==========================
 # ONLINE
 # ==========================
+
 @bot.event
 async def on_ready():
     print("==============================")
@@ -26,26 +31,34 @@ async def on_ready():
         print(f"🔄 {len(sincronizados)} comandos slash (/) sincronizados.")
     except Exception as e:
         print(f"⚠️ Erro ao sincronizar comandos slash: {e}")
+    
     await bot.change_presence(
         activity=discord.Game(
             name="Servidor Profissional 🚀"
         )
     )
+
 # ==========================
 # COGS
 # ==========================
+
 async def load_cogs():
     for arquivo in os.listdir("./cogs"):
         if arquivo.endswith(".py"):
-            await bot.load_extension(
-                f"cogs.{arquivo[:-3]}"
-            )
-            print(
-                f"Cog carregado: {arquivo}"
-            )
+            try:
+                await bot.load_extension(
+                    f"cogs.{arquivo[:-3]}"
+                )
+                print(
+                    f"✅ Cog carregado: {arquivo}"
+                )
+            except Exception as e:
+                print(f"❌ Erro ao carregar {arquivo}: {e}")
+
 # ==========================
 # START
 # ==========================
+
 async def main():
     async with bot:
         await load_cogs()
@@ -53,4 +66,5 @@ async def main():
             "DISCORD_TOKEN"
         )
         await bot.start(token)
+
 asyncio.run(main())
