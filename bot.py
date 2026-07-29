@@ -68,3 +68,10 @@ async def main():
         await bot.start(token)
 
 asyncio.run(main())
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    print(f"Mensagem recebida: {message.content}")
+    await bot.process_commands(message)
