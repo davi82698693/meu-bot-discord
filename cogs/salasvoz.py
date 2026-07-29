@@ -14,14 +14,15 @@ os.makedirs(DATA_DIR, exist_ok=True)
 DATA_FILE = os.path.join(DATA_DIR, "salasvoz_data.json")
 
 def carregar_dados():
- if not os.path.exists(DATA_FILE):
- return {}
- try:
- with open(DATA_FILE, "r", encoding="utf-8") as f:
- return json.load(f)
- except Exception:
- return {}
-
+    if not os.path.exists(DATA_FILE):
+        return {}
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Erro ao carregar dados: {e}")
+        return {}
+     
 def salvar_dados(dados):
  try:
  with open(DATA_FILE, "w", encoding="utf-8") as f:
