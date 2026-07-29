@@ -100,7 +100,7 @@ class CategorySelect(Select):
             # garantir descrição curta (Select limita tamanho)
             desc_short = (description[:95] + "...") if len(description) > 95 else description
             options.append(discord.SelectOption(label=dados.get("nome", chave), value=chave, description=desc_short))
-        super().__init__(placeholder="Escolha uma categoria...", min_values=1, max_values=1, options=options)
+        super()._init_(placeholder="Escolha uma categoria...", min_values=1, max_values=1, options=options, custom_id="ajuda_select_categoria")
 
     async def callback(self, interaction: discord.Interaction):
         chave = self.values[0]
@@ -151,7 +151,7 @@ class HelpView(View):
         # remove componentes ao expirar
         pass
 
-    @discord.ui.button(label="Fechar", style=discord.ButtonStyle.danger, row=2)
+    @discord.ui.button(label="Fechar", style=discord.ButtonStyle.danger, row=2, custom_id="btn_fechar_ajuda")
     async def fechar_button(self, button: Button, interaction: discord.Interaction):
         # apenas fecha a mensagem para o usuário
         try:
