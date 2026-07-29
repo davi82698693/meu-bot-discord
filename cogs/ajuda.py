@@ -124,14 +124,14 @@ class BackButton(Button):
 
 class CategoryView(View):
     def __init__(self, original_author: discord.User):
-        super().__init__(timeout=None)
+        super().__init__(timeout=600)
         self.original_author = original_author
         # adiciona botão voltar
         self.add_item(BackButton())
 
 class HelpView(View):
     def __init__(self, bot: commands.Bot, original_author: discord.User, guild: Optional[discord.Guild]):
-        super().__init__(timeout=None)
+        super().__init__(timeout=600)
         self.bot = bot
         self.original_author = original_author
         # select de categorias
