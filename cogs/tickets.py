@@ -34,20 +34,20 @@ def salvar_tickets_abertos(dados):
 CONFIG_FILE = os.path.join(DATA_DIR, "tickets_config.json")
 
 def carregar_config():
- if not os.path.exists(CONFIG_FILE):
- return {}
- try:
- with open(CONFIG_FILE, "r", encoding="utf-8") as f:
- return json.load(f)
- except Exception:
- return {}
+    if not os.path.exists(CONFIG_FILE):
+        return {}
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 def salvar_config(dados):
- try:
- with open(CONFIG_FILE, "w", encoding="utf-8") as f:
- json.dump(dados, f, ensure_ascii=False, indent=2)
- except Exception as e:
- print(f"⚠️ Erro ao salvar tickets_config.json: {e}")
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ Erro ao salvar tickets_config.json: {e}")
 
 def config_guild(dados, guild_id):
  return dados.setdefault(str(guild_id), {
