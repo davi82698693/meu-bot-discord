@@ -23,12 +23,12 @@ def carregar_dados():
         print(f"Erro ao carregar dados: {e}")
         return {}
      
-def salvar_dados(dados):
- try:
- with open(DATA_FILE, "w", encoding="utf-8") as f:
- json.dump(dados, f, ensure_ascii=False, indent=2)
- except Exception as e:
- print(f"⚠️ Erro ao salvar salasvoz_data.json: {e}")
+ def salvar_dados(dados):
+     try:
+         with open(DATA_FILE, "w", encoding="utf-8") as f:
+             json.dump(dados, f, ensure_ascii=False, indent=2)
+     except Exception as e:
+         print(f"⚠️ Erro ao salvar salasvoz_data.json: {e}")
 
 def embed_padrao(titulo, descricao, cor=discord.Color.blurple()):
  embed = discord.Embed(
