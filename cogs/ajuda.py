@@ -151,7 +151,7 @@ class HelpView(View):
         # remove componentes ao expirar
         pass
 
-    @discord.ui.button(label="Fechar", style=discord.ButtonStyle.danger, row=2, custom_id="btn_fechar_ajuda")
+    @discord.ui.button(label="Fechar", style=discord.ButtonStyle.red, custom_id="btn_fechar_ajuda")
     async def fechar_button(self, button: Button, interaction: discord.Interaction):
         # apenas fecha a mensagem para o usuário
         try:
