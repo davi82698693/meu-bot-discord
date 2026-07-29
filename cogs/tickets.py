@@ -16,20 +16,20 @@ os.makedirs(DATA_DIR, exist_ok=True)
 TICKETS_FILE = os.path.join(DATA_DIR, "tickets_abertos.json")
 
 def carregar_tickets_abertos():
- if not os.path.exists(TICKETS_FILE):
- return {}
- try:
- with open(TICKETS_FILE, "r", encoding="utf-8") as f:
- return json.load(f)
- except Exception:
- return {}
+    if not os.path.exists(TICKETS_FILE):
+        return {}
+    try:
+        with open(TICKETS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 def salvar_tickets_abertos(dados):
- try:
- with open(TICKETS_FILE, "w", encoding="utf-8") as f:
- json.dump(dados, f, ensure_ascii=False, indent=2)
- except Exception as e:
- print(f"⚠️ Erro ao salvar tickets_abertos.json: {e}")
+    try:
+        with open(TICKETS_FILE, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ Erro ao salvar tickets_abertos.json: {e}")
 
 CONFIG_FILE = os.path.join(DATA_DIR, "tickets_config.json")
 
