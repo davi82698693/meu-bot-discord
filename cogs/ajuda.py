@@ -44,6 +44,7 @@ def saudacao() -> str:
         return "Boa tarde"
     return "Boa noite"
 
+
 def build_category_embed(chave: str, guild: Optional[discord.Guild] = None) -> discord.Embed:
     dados = CATEGORIAS.get(chave)
     if not dados:
@@ -89,6 +90,7 @@ def build_category_embed(chave: str, guild: Optional[discord.Guild] = None) -> d
 
     return embed
 
+
 # ==========================================================
 # VIEW e COMPONENTS
 # ==========================================================
@@ -108,9 +110,10 @@ class CategorySelect(Select):
         # substitui view por uma que contenha botão Voltar
         await interaction.response.edit_message(embed=embed, view=CategoryView(original_author=interaction.user))
 
+
 class BackButton(Button):
     def __init__(self):
-        super().__init__(label="🔙 Voltar", style=discord.ButtonStyle.secondary)
+        super().__init__(label="🔙 Voltar", style=discord.ButtonStyle.secondary, custom_id="ajuda_voltar")
 
     async def callback(self, interaction: discord.Interaction):
         view = HelpView(self.view.bot, original_author=interaction.user, guild=interaction.guild)
@@ -122,16 +125,18 @@ class BackButton(Button):
         )
         await interaction.response.edit_message(embed=embed, view=view)
 
+
 class CategoryView(View):
-    def __init__(self, original_author: discord.User):
-        super().__init__(timeout=600)
+    def __init__(self, original_author: Optional[discord.User]):
+        super().__init__(timeout=None)
         self.original_author = original_author
         # adiciona botão voltar
         self.add_item(BackButton())
 
+
 class HelpView(View):
-    def __init__(self, bot: commands.Bot, original_author: discord.User, guild: Optional[discord.Guild]):
-        super().__init__(timeout=600)
+    def __init__(self, bot: commands.Bot, original_author: Optional[discord.User], guild: Optional[discord.Guild]):
+        super().__init__(timeout=None)
         self.bot = bot
         self.original_author = original_author
         # select de categorias
@@ -139,25 +144,20 @@ class HelpView(View):
         # botão de referência rápido para loja-robux (opcional)
         if "loja-robux" in CATEGORIAS:
             self.add_item(Button(label="Loja Robux (info rápida)", style=discord.ButtonStyle.primary, custom_id="loja_robux_info"))
-        # adiciona botão de fechar (apenas para autor)
-        self.add_item(Button(label="Fechar", style=discord.ButtonStyle.danger, custom_id="ajuda_fechar"))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         # permite que qualquer pessoa use, mas você pode limitar ao autor:
         # return interaction.user.id == self.original_author.id
         return True
 
-    async def on_timeout(self) -> None:
-        # remove componentes ao expirar
-        pass
-
     @discord.ui.button(label="Fechar", style=discord.ButtonStyle.red, custom_id="btn_fechar_ajuda")
-    async def fechar_button(self, button: Button, interaction: discord.Interaction):
+    async def fechar_button(self, interaction: discord.Interaction, button: Button):
         # apenas fecha a mensagem para o usuário
         try:
             await interaction.message.delete()
         except Exception:
             await interaction.response.send_message("Não foi possível apagar a mensagem.", ephemeral=True)
+
 
 # ==========================================================
 # COG
@@ -167,7 +167,7 @@ class Ajuda(commands.Cog):
         self.bot = bot
 
     async def cog_load(self):
-        # registra views persistentes (opcional)
+        # registra views persistentes
         self.bot.add_view(HelpView(self.bot, original_author=None, guild=None))
         self.bot.add_view(CategoryView(original_author=None))
 
@@ -189,6 +189,7 @@ class Ajuda(commands.Cog):
 
         view = HelpView(self.bot, original_author=ctx.author, guild=ctx.guild)
         await ctx.send(embed=embed, view=view)
+
 
 # ==========================================================
 # SETUP
