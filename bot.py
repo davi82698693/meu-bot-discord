@@ -31,12 +31,24 @@ async def on_ready():
         print(f"🔄 {len(sincronizados)} comandos slash (/) sincronizados.")
     except Exception as e:
         print(f"⚠️ Erro ao sincronizar comandos slash: {e}")
-    
+
     await bot.change_presence(
         activity=discord.Game(
             name="Servidor Profissional 🚀"
         )
     )
+
+# ==========================
+# MENSAGENS (precisa vir ANTES do asyncio.run, senão nunca é registrado
+# e nenhum comando com "!" funciona)
+# ==========================
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    print(f"Mensagem recebida: {message.content}")
+    await bot.process_commands(message)
 
 # ==========================
 # COGS
@@ -68,10 +80,3 @@ async def main():
         await bot.start(token)
 
 asyncio.run(main())
-
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-    print(f"Mensagem recebida: {message.content}")
-    await bot.process_commands(message)
